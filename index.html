@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Vaccine Panda</title>
+    <meta name="description" content="Vaccine Due List & Quotation Maker">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="VaxPanda">
+    <link rel="manifest" id="manifestLink">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+
+        :root {
+            --bg: #0d0d1a;
+            --surface: #161628;
+            --surface2: #1e1e38;
+            --border: #2a2a4a;
+            --accent: #7c6fdb;
+            --accent2: #e06c9f;
+            --green: #4ecb71;
+            --red: #e05c5c;
+            --yellow: #f0c040;
+            --blue: #5cb8e4;
+            --text: #e8e8f4;
+            --muted: #8888aa;
+            --radius: 12px;
+            --font: 'Nunito', sans-serif;
+            --mono: 'Space Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            min-height: 100dvh;
+        }
+
+        /* ───── LOGIN SCREEN ───── */
+        #loginScreen {
+            position: fixed; inset: 0; z-index: 9999;
+            background: radial-gradient(ellipse at 30% 20%, #2a1a4a 0%, #0d0d1a 60%);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        #loginScreen.hidden { display: none; }
+
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px 36px;
+            max-width: 380px; width: 100%;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,111,219,0.15);
+        }
+        .login-logo { font-size: 48px; text-align: center; margin-bottom: 6px; }
+        .login-title { text-align: center; font-size: 1.6em; font-weight: 900; margin-bottom: 4px; }
+        .login-sub { text-align: center; color: var(--muted); font-size: 0.88em; margin-bottom: 28px; }
+
+        .login-input-wrap { position: relative; margin-bottom: 16px; }
+        .login-input-wrap input {
+            width: 100%; padding: 14px 16px 14px 44px;
+            background: var(--bg); border: 2px solid var(--border);
+            border-radius: var(--radius); color: var(--text); font-size: 1em; font-family: var(--font);
+            transition: border-color .2s;
+        }
+        .login-input-wrap input:focus { outline: none; border-color: var(--accent); }
+        .login-input-wrap .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; }
+        .login-error { color: var(--red); font-size: 0.85em; margin-bottom: 12px; min-height: 20px; text-align: center; }
+
+        .btn-login {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white; font-size: 1em; font-weight: 800; font-family: var(--font);
+            border: none; border-radius: var(--radius); cursor: pointer;
+            transition: opacity .2s, transform .15s;
+        }
+        .btn-login:hover { opacity: 0.9; transform: translateY(-1px); }
+        .remember-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--muted); font-size: 0.88em; }
+        .remember-row input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+        /* ───── APP ───── */
+        #app { display: none; max-width: 740px; margin: 0 auto; padding: 16px 16px 80px; }
+        #app.visible { display: block; }
+
+        .app-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 20px; margin-bottom: 20px;
+            background: var(--surface); border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .app-header-left { display: flex; align-items: center; gap: 12px; }
+        .app-header h1 { font-size: 1.4em; font-weight: 900; }
+        .app-header p { font-size: 0.78em; color: var(--muted); }
+        .logout-btn {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--muted); padding: 8px 14px; border-radius: 8px;
+            font-size: 0.8em; cursor: pointer; font-family: var(--font); transition: all .2s;
+        }
+        .logout-btn:hover { color: var(--red); border-color: var(--red); }
+
+        /* Doc type toggle */
+        .doc-toggle {
+            display: flex; gap: 10px; background: var(--surface); border-radius: 12px;
+            padding: 6px; border: 1px solid var(--border); margin-bottom: 20px;
+        }
+        .doc-toggle label {
+            flex: 1; text-align: center; padding: 10px 8px;
+            border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 0.88em;
+            transition: all .2s; color: var(--muted);
+        }
+        .doc-toggle input[type=radio] { display: none; }
+        .doc-toggle input[type=radio]:checked + label {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white;
+        }
+
+        /* Section card */
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 20px; margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 0.78em; font-weight: 800; letter-spacing: .1em;
+            text-transform: uppercase; color: var(--accent); margin-bottom: 16px;
+        }
+
+        /* Form fields */
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 0.82em; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+        .field input, .field select {
+            width: 100%; padding: 11px 14px;
+            background: var(--bg); border: 1.5px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 0.95em; font-family: var(--font);
+            transition: border-color .2s;
+        }
+        .field input:focus, .field select:focus { outline: none; border-color: var(--accent); }
+        .field input::placeholder { color: var(--muted); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .checkbox-row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 4px; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.88em; color: var(--muted); cursor: pointer; }
+        .checkbox-item input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+        /* Search bar */
+        .search-wrap { position: relative; margin-bottom: 16px; }
+        .search-wrap input {
+            width: 100%; padding: 12px 14px 12px 42px;
+            background: var(--bg); border: 1.5px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: 0.95em; font-family: var(--font);
+            transition: border-color .2s;
+        }
+        .search-wrap input:focus { outline: none; border-color: var(--accent); }
+        .search-wrap .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 17px; }
+        .search-clear {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: var(--surface2); border: none; color: var(--muted);
+            width: 22px; height: 22px; border-radius: 50%; font-size: 12px; cursor: pointer;
+            display: none; align-items: center; justify-content: center;
+        }
+        .search-clear.visible { display: flex; }
+
+        /* Vaccine grid */
+        .vacc-count {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(78,203,113,0.15); color: var(--green);
+            border: 1px solid rgba(78,203,113,0.3);
+            padding: 4px 12px; border-radius: 20px; font-size: 0.82em; font-weight: 700;
+            margin-bottom: 14px;
+        }
+        .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .filter-chip {
+            padding: 5px 12px; border-radius: 20px; font-size: 0.78em; font-weight: 700;
+            cursor: pointer; border: 1.5px solid var(--border); background: var(--bg); color: var(--muted);
+            transition: all .18s; white-space: nowrap;
+        }
+        .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+        .vaccine-list { display: flex; flex-direction: column; gap: 8px; }
+        .vacc-item {
+            display: flex; align-items: center; gap: 12px;
+            background: var(--bg); border: 1.5px solid var(--border);
+            border-radius: 10px; padding: 12px 14px; cursor: pointer; transition: all .18s;
+            user-select: none;
+        }
+        .vacc-item:hover { border-color: var(--accent); }
+        .vacc-item.selected { border-color: var(--green); background: rgba(78,203,113,0.07); }
+        .vacc-check {
+            width: 22px; height: 22px; border-radius: 6px;
+            border: 2px solid var(--border); background: var(--surface); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 13px;
+            transition: all .18s;
+        }
+        .vacc-item.selected .vacc-check { background: var(--green); border-color: var(--green); }
+        .vacc-info { flex: 1; min-width: 0; }
+        .vacc-name { font-weight: 800; font-size: 0.93em; }
+        .vacc-cat { font-size: 0.76em; color: var(--muted); margin-top: 2px; }
+        .vacc-badge {
+            font-size: 0.68em; background: rgba(240,192,64,0.2); color: var(--yellow);
+            border: 1px solid rgba(240,192,64,0.3); padding: 2px 7px; border-radius: 4px; font-weight: 700;
+        }
+        .vacc-price-col { text-align: right; flex-shrink: 0; }
+        .vacc-price { font-family: var(--mono); font-size: 0.88em; color: var(--green); font-weight: 700; }
+
+        /* Selected vaccine controls */
+        .vacc-controls {
+            display: flex; align-items: center; gap: 8px; margin-top: 10px;
+            padding-top: 10px; border-top: 1px solid var(--border);
+        }
+        .qty-btn {
+            width: 28px; height: 28px; border-radius: 6px; border: 1.5px solid var(--border);
+            background: var(--surface); color: var(--text); font-size: 16px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all .15s;
+        }
+        .qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .qty-val { font-family: var(--mono); font-size: 0.88em; font-weight: 700; min-width: 24px; text-align: center; }
+        .mrp-edit-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+        .mrp-edit-wrap label { font-size: 0.78em; color: var(--muted); }
+        .mrp-edit {
+            width: 84px; padding: 5px 8px; background: var(--surface);
+            border: 1.5px solid var(--border); border-radius: 7px; color: var(--text);
+            font-family: var(--mono); font-size: 0.85em; text-align: right;
+        }
+        .mrp-edit:focus { outline: none; border-color: var(--accent); }
+
+        /* No results */
+        .no-results { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9em; }
+
+        /* Custom vaccine add */
+        .add-custom-btn {
+            width: 100%; padding: 11px; border: 1.5px dashed var(--border); border-radius: 10px;
+            background: transparent; color: var(--accent); font-family: var(--font);
+            font-size: 0.9em; font-weight: 700; cursor: pointer; transition: all .2s;
+            margin-top: 4px;
+        }
+        .add-custom-btn:hover { border-color: var(--accent); background: rgba(124,111,219,0.08); }
+
+        /* Pricing section */
+        .pricing-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* Summary */
+        .summary-card {
+            background: linear-gradient(135deg, #1a1430 0%, #1e1238 100%);
+            border: 1px solid rgba(124,111,219,0.3);
+            border-radius: 16px; padding: 20px; margin-bottom: 16px;
+        }
+        .summary-card .card-title { color: var(--accent2); }
+        .sum-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.9em; color: var(--muted); }
+        .sum-row + .sum-row { border-top: 1px solid var(--border); }
+        .sum-total { border-top: 2px solid rgba(124,111,219,0.4) !important; padding-top: 14px !important; margin-top: 6px; }
+        .sum-total span:first-child { font-weight: 900; font-size: 1em; color: var(--text); }
+        .sum-total span:last-child { font-family: var(--mono); font-size: 1.3em; font-weight: 700; color: var(--accent); }
+
+        /* Action buttons */
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+        .action-btn {
+            padding: 13px 10px; border: none; border-radius: 11px;
+            font-family: var(--font); font-size: 0.88em; font-weight: 800;
+            cursor: pointer; transition: all .18s; display: flex; align-items: center; justify-content: center; gap: 7px;
+        }
+        .action-btn:hover { transform: translateY(-2px); }
+        .btn-green { background: rgba(78,203,113,0.2); color: var(--green); border: 1.5px solid rgba(78,203,113,0.3); }
+        .btn-green:hover { background: var(--green); color: white; }
+        .btn-red { background: rgba(224,92,92,0.15); color: var(--red); border: 1.5px solid rgba(224,92,92,0.25); }
+        .btn-red:hover { background: var(--red); color: white; }
+        .btn-yellow { background: rgba(240,192,64,0.15); color: var(--yellow); border: 1.5px solid rgba(240,192,64,0.25); }
+        .btn-yellow:hover { background: var(--yellow); color: #111; }
+        .btn-blue { background: rgba(92,184,228,0.15); color: var(--blue); border: 1.5px solid rgba(92,184,228,0.25); }
+        .btn-blue:hover { background: var(--blue); color: white; }
+        .btn-muted { background: var(--surface2); color: var(--muted); border: 1.5px solid var(--border); }
+        .btn-muted:hover { color: var(--text); border-color: var(--text); }
+        .btn-pdf {
+            width: 100%; margin-top: 12px; padding: 14px;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: white; font-family: var(--font); font-size: 0.95em; font-weight: 800;
+            border: none; border-radius: 11px; cursor: pointer; transition: opacity .2s;
+        }
+        .btn-pdf:hover { opacity: 0.9; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; z-index: 1000;
+            background: rgba(0,0,0,0.7); padding: 20px; overflow-y: auto;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 18px; padding: 28px; width: 100%; max-width: 420px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+        }
+        .modal h3 { font-size: 1.1em; font-weight: 900; margin-bottom: 18px; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-btns button { flex: 1; padding: 12px; border-radius: 10px; font-family: var(--font); font-size: 0.9em; font-weight: 700; cursor: pointer; border: none; }
+        .modal-btns .modal-confirm { background: var(--green); color: white; }
+        .modal-btns .modal-cancel { background: var(--surface2); color: var(--muted); }
+
+        @media (max-width: 540px) {
+            .form-row, .pricing-row { grid-template-columns: 1fr; }
+            .action-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 360px) {
+            .action-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="loginScreen">
+    <div class="login-box">
+        <div class="login-logo">🐼</div>
+        <div class="login-title">Vaccine Panda</div>
+        <div class="login-sub">Due List & Quotation Maker</div>
+
+        <div class="login-input-wrap">
+            <span class="icon">🔑</span>
+            <input type="password" id="passwordInput" placeholder="Enter access password"
+                onkeydown="if(event.key==='Enter') doLogin()">
+        </div>
+        <div class="remember-row">
+            <input type="checkbox" id="rememberMe" checked>
+            <label for="rememberMe">Stay logged in for 30 days</label>
+        </div>
+        <div class="login-error" id="loginError"></div>
+        <button class="btn-login" onclick="doLogin()">Unlock →</button>
+    </div>
+</div>
+
+<!-- ═══════════════ MAIN APP ═══════════════ -->
+<div id="app">
+
+    <!-- Header -->
+    <div class="app-header">
+        <div class="app-header-left">
+            <span style="font-size:30px">🐼</span>
+            <div>
+                <h1>Vaccine Panda</h1>
+                <p>Due List & Quotation Maker</p>
+            </div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Log out</button>
+    </div>
+
+    <!-- Doc type -->
+    <div class="doc-toggle">
+        <input type="radio" name="docType" id="typeQuotation" value="quotation" checked onchange="toggleDocType()">
+        <label for="typeQuotation">💰 Quotation</label>
+        <input type="radio" name="docType" id="typeDuelist" value="duelist" onchange="toggleDocType()">
+        <label for="typeDuelist">📋 Due List Only</label>
+    </div>
+
+    <!-- Patient info -->
+    <div class="card">
+        <div class="card-title">Patient Info</div>
+        <div class="field">
+            <label>Child Name</label>
+            <input type="text" id="childName" placeholder="Child's name">
+        </div>
+        <div class="form-row">
+            <div class="field">
+                <label>Date of Birth</label>
+                <input type="date" id="dob">
+            </div>
+            <div class="field">
+                <label>Parent Name</label>
+                <input type="text" id="parentName" placeholder="Parent's name">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="field">
+                <label>Primary Phone</label>
+                <input type="tel" id="phone1" placeholder="Phone number">
+            </div>
+            <div class="field">
+                <label>Secondary Phone</label>
+                <input type="tel" id="phone2" placeholder="Optional">
+            </div>
+        </div>
+        <div class="field">
+            <label>Clinic Reg No</label>
+            <input type="text" id="clinicRegNo" placeholder="Optional">
+        </div>
+        <div class="checkbox-row">
+            <label class="checkbox-item">
+                <input type="checkbox" id="cardSent"> Card Sent
+            </label>
+            <label class="checkbox-item">
+                <input type="checkbox" id="addressShared"> Address Shared
+            </label>
+        </div>
+    </div>
+
+    <!-- Vaccine selection -->
+    <div class="card">
+        <div class="card-title">Select Due Vaccines</div>
+        <div class="vacc-count" id="vaccCount">✓ 0 selected</div>
+
+        <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="vaccSearch" placeholder="Search vaccine by name or category…" oninput="onSearch()">
+            <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+        </div>
+
+        <div class="filter-row" id="filterRow"></div>
+
+        <div class="vaccine-list" id="vaccineList"></div>
+        <div class="no-results" id="noResults" style="display:none">No vaccines match your search.</div>
+
+        <button class="add-custom-btn" onclick="openCustomModal()">＋ Add Custom Vaccine</button>
+    </div>
+
+    <!-- Pricing (quotation only) -->
+    <div class="card" id="pricingCard">
+        <div class="card-title">Discounts & Offers</div>
+        <div class="pricing-row">
+            <div class="field">
+                <label>Discount %</label>
+                <select id="discount" onchange="calcTotal()">
+                    <option value="0">No Discount</option>
+                    <option value="5">5%</option>
+                    <option value="7">7%</option>
+                    <option value="9">9%</option>
+                    <option value="10">10%</option>
+                    <option value="12">12%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                </select>
+            </div>
+            <div class="field">
+                <label>Free Consultations</label>
+                <select id="consultations" onchange="calcTotal()">
+                    <option value="0">None</option>
+                    <option value="1">1 (₹500)</option>
+                    <option value="2">2 (₹1,000)</option>
+                    <option value="3">3 (₹1,500)</option>
+                    <option value="4">4 (₹2,000)</option>
+                    <option value="5">5 (₹2,500)</option>
+                    <option value="6">6 (₹3,000)</option>
+                    <option value="7">7 (₹3,500)</option>
+                    <option value="8">8 (₹4,000)</option>
+                    <option value="9">9 (₹4,500)</option>
+                    <option value="10">10 (₹5,000)</option>
+                    <option value="12">12 (₹6,000)</option>
+                    <option value="15">15 (₹7,500)</option>
+                </select>
+            </div>
+        </div>
+        <label class="checkbox-item" style="margin-top:4px">
+            <input type="checkbox" id="optOut" onchange="handleOptOut()">
+            Opt out of free consultations for extra 2% discount
+        </label>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-card" id="summaryCard">
+        <div class="card-title">Summary</div>
+        <div class="sum-row"><span>Subtotal</span><span id="sumSubtotal" style="font-family:var(--mono)">₹0</span></div>
+        <div class="sum-row"><span>Discount</span><span id="sumDiscount" style="font-family:var(--mono);color:var(--red)">−₹0</span></div>
+        <div class="sum-row"><span>Consultations value</span><span id="sumConsult" style="font-family:var(--mono);color:var(--green)">₹0</span></div>
+        <div class="sum-row sum-total"><span>Total Payable</span><span id="sumTotal">₹0</span></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card">
+        <div class="card-title">Actions</div>
+        <div class="action-grid">
+            <button class="action-btn btn-green" onclick="handleAction('YES')">✓ YES — Proceed</button>
+            <button class="action-btn btn-red" onclick="handleAction('NO')">✗ NO — Decline</button>
+            <button class="action-btn btn-yellow" onclick="handleAction('EDIT')">✎ Edit</button>
+            <button class="action-btn btn-blue" onclick="handleAction('DOCTOR')">👨‍⚕️ Talk to Doctor</button>
+            <button class="action-btn btn-muted" onclick="handleAction('QUERY')">❓ Query</button>
+        </div>
+        <button class="btn-pdf" onclick="downloadPDF()">📥 Download as PDF</button>
+    </div>
+
+</div>
+
+<!-- ═══════════════ CUSTOM VACCINE MODAL ═══════════════ -->
+<div class="modal-overlay" id="customModal">
+    <div class="modal">
+        <h3>➕ Add Custom Vaccine</h3>
+        <div class="field">
+            <label>Category</label>
+            <input type="text" id="cstCat" list="catList" placeholder="e.g. DTP/DTaP">
+            <datalist id="catList"></datalist>
+        </div>
+        <div class="field">
+            <label>Brand Name</label>
+            <input type="text" id="cstBrand" placeholder="Brand name">
+        </div>
+        <div class="field">
+            <label>MRP (₹)</label>
+            <input type="number" id="cstMrp" placeholder="Price" min="0">
+        </div>
+        <div class="modal-btns">
+            <button class="modal-confirm" onclick="saveCustom()">Add Vaccine</button>
+            <button class="modal-cancel" onclick="closeCustomModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+//  PASSWORD & AUTH
+// ════════════════════════════════════════════════
+const PASS = 'panda2024';          // ← Change password here
+const SESSION_KEY = 'vp_auth';
+const SESSION_EXPIRY_KEY = 'vp_auth_expiry';
+
+function checkAuth() {
+    const expiry = localStorage.getItem(SESSION_EXPIRY_KEY);
+    if (expiry && Date.now() < parseInt(expiry)) {
+        showApp();
+    }
+}
+
+function doLogin() {
+    const pwd = document.getElementById('passwordInput').value;
+    const remember = document.getElementById('rememberMe').checked;
+    if (pwd === PASS) {
+        if (remember) {
+            localStorage.setItem(SESSION_KEY, '1');
+            localStorage.setItem(SESSION_EXPIRY_KEY, Date.now() + 30*24*60*60*1000);
+        } else {
+            sessionStorage.setItem(SESSION_KEY, '1');
+        }
+        showApp();
+    } else {
+        const err = document.getElementById('loginError');
+        err.textContent = '❌ Incorrect password. Try again.';
+        setTimeout(() => err.textContent = '', 3000);
+    }
+}
+
+function doLogout() {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_EXPIRY_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('app').classList.remove('visible');
+    document.getElementById('passwordInput').value = '';
+}
+
+function showApp() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+}
+
+// ════════════════════════════════════════════════
+//  VACCINE DATA
+// ════════════════════════════════════════════════
+const vaccineData = {
+    'DTP/DTaP': [
+        { brand: 'Hexasil PFS', mrp: 2690 },
+        { brand: 'Hexaxim', mrp: 4330 },
+        { brand: 'Infanrix Hexa', mrp: 3735 },
+        { brand: 'Pentaxim', mrp: 3350 },
+        { brand: 'Tetraxim', mrp: 2635 },
+        { brand: 'Adacel-dTpa', mrp: 1400 },
+        { brand: 'Easy Four Po', mrp: 2145 },
+        { brand: 'BOOSTRIX-dTpa', mrp: 1399 },
+        { brand: 'Easy Six', mrp: 2995 }
+    ],
+    'Pneumococcal (PCV)': [
+        { brand: 'Prevenar 13', mrp: 3991 },
+        { brand: 'Vaximune 13', mrp: 3994 },
+        { brand: 'Pneumoguard 13', mrp: 3969 },
+        { brand: 'Pneumosil', mrp: 2280 },
+        { brand: 'Synflorix', mrp: 2599 }
+    ],
+    'Rotavirus': [
+        { brand: 'Rotavac 5D PFS', mrp: 897 },
+        { brand: 'Rotasure Drops', mrp: 897 },
+        { brand: 'Rotasil Liquid', mrp: 912 },
+        { brand: 'RotaTeq Drops', mrp: 897 }
+    ],
+    'Polio (OPV)': [
+        { brand: 'OPV', mrp: 50 }
+    ],
+    'Typhoid': [
+        { brand: 'Zyvac TCV PFS', mrp: 2622 },
+        { brand: 'Biovac TCV', mrp: 2622 },
+        { brand: 'Typbar TCV PFS', mrp: 2353 }
+    ],
+    'Influenza': [
+        { brand: 'Fluarix Tetra Nasal', mrp: 2499 },
+        { brand: 'Influvac Tetra', mrp: 2688 },
+        { brand: 'Vaxiflu 4 SH', mrp: 2007 },
+        { brand: 'Vaxiflu 3', mrp: 1990 },
+        { brand: 'Vaxigrip 3', mrp: 1067 }
+    ],
+    'Mumps/MMR': [
+        { brand: 'Zyvac MMR', mrp: 895 },
+        { brand: 'Tresivac', mrp: 725 },
+        { brand: 'Priorix (MMR)', mrp: 941 }
+    ],
+    'Chickenpox (Varicella)': [
+        { brand: 'Nexipox Plus', mrp: 2778 },
+        { brand: 'Varipred', mrp: 2500 },
+        { brand: 'Varilrix', mrp: 2418 }
+    ],
+    'Meningitis': [
+        { brand: 'Menactra', mrp: 5700 },
+        { brand: 'Menveo', mrp: 4728 },
+        { brand: 'Menifive', mrp: 4000 }
+    ],
+    'Herpes': [
+        { brand: 'Shingrix', mrp: 10999 }
+    ],
+    'Cancer (HPV)': [
+        { brand: 'Gardasil 9', mrp: 10850 },
+        { brand: 'Gardasil 4', mrp: 3927 },
+        { brand: 'Cervavac', mrp: 2000 }
+    ],
+    'Hepatitis A': [
+        { brand: 'Havrix 720', mrp: 2528 },
+        { brand: 'Biovac A', mrp: 2320 },
+        { brand: 'Havshield', mrp: 2515 },
+        { brand: 'Hap Bev', mrp: 2286 }
+    ]
+};
+
+let selected = {};   // { "Cat::Brand": { category, brand, mrp, quantity } }
+let activeFilter = '';
+let searchQuery = '';
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+function init() {
+    checkAuth();
+    buildFilterChips();
+    buildCatDatalist();
+    renderVaccines();
+    toggleDocType();
+}
+
+function buildFilterChips() {
+    const row = document.getElementById('filterRow');
+    row.innerHTML = '';
+    const all = document.createElement('button');
+    all.className = 'filter-chip active';
+    all.textContent = 'All';
+    all.onclick = () => setFilter('');
+    row.appendChild(all);
+
+    Object.keys(vaccineData).forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-chip';
+        btn.textContent = cat;
+        btn.onclick = () => setFilter(cat);
+        row.appendChild(btn);
+    });
+}
+
+function setFilter(cat) {
+    activeFilter = cat;
+    document.querySelectorAll('.filter-chip').forEach(c => {
+        c.classList.toggle('active',
+            cat === '' ? c.textContent === 'All' : c.textContent === cat);
+    });
+    renderVaccines();
+}
+
+function buildCatDatalist() {
+    const dl = document.getElementById('catList');
+    dl.innerHTML = '';
+    Object.keys(vaccineData).forEach(cat => {
+        const o = document.createElement('option'); o.value = cat; dl.appendChild(o);
+    });
+}
+
+// ════════════════════════════════════════════════
+//  SEARCH
+// ════════════════════════════════════════════════
+function onSearch() {
+    searchQuery = document.getElementById('vaccSearch').value.trim().toLowerCase();
+    document.getElementById('searchClear').classList.toggle('visible', searchQuery.length > 0);
+    if (searchQuery) { activeFilter = ''; document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active')); }
+    renderVaccines();
+}
+
+function clearSearch() {
+    document.getElementById('vaccSearch').value = '';
+    searchQuery = '';
+    document.getElementById('searchClear').classList.remove('visible');
+    renderVaccines();
+}
+
+// ════════════════════════════════════════════════
+//  RENDER VACCINES
+// ════════════════════════════════════════════════
+function renderVaccines() {
+    const list = document.getElementById('vaccineList');
+    const noRes = document.getElementById('noResults');
+    const isQuot = isQuotation();
+    list.innerHTML = '';
+    let count = 0;
+
+    Object.keys(vaccineData).forEach(cat => {
+        if (activeFilter && activeFilter !== cat) return;
+        vaccineData[cat].forEach(v => {
+            const id = `${cat}::${v.brand}`;
+            const nm = v.brand.toLowerCase();
+            const ctLow = cat.toLowerCase();
+            if (searchQuery && !nm.includes(searchQuery) && !ctLow.includes(searchQuery)) return;
+            count++;
+
+            const sel = !!selected[id];
+            const data = sel ? selected[id] : { mrp: v.mrp, quantity: 1 };
+
+            const item = document.createElement('div');
+            item.className = `vacc-item${sel ? ' selected' : ''}`;
+            item.id = `vi_${id}`;
+
+            let priceHtml = isQuot ? `<div class="vacc-price">₹${(data.mrp).toLocaleString()}</div>` : '';
+
+            item.innerHTML = `
+                <div class="vacc-check">${sel ? '✓' : ''}</div>
+                <div class="vacc-info">
+                    <div class="vacc-name">
+                        ${v.brand}
+                        ${v.custom ? '<span class="vacc-badge">CUSTOM</span>' : ''}
+                    </div>
+                    <div class="vacc-cat">${cat}</div>
+                </div>
+                ${isQuot ? `<div class="vacc-price-col">${priceHtml}</div>` : ''}
+            `;
+
+            if (sel) {
+                const ctrl = document.createElement('div');
+                ctrl.className = 'vacc-controls';
+                ctrl.innerHTML = `
+                    <button class="qty-btn" onclick="event.stopPropagation(); changeQty('${id}', -1)">−</button>
+                    <span class="qty-val" id="qty_${id}">${data.quantity}</span>
+                    <button class="qty-btn" onclick="event.stopPropagation(); changeQty('${id}', 1)">+</button>
+                    ${isQuot ? `
+                    <div class="mrp-edit-wrap">
+                        <label>₹</label>
+                        <input class="mrp-edit" type="number" id="mrp_${id}" value="${data.mrp}"
+                            onclick="event.stopPropagation()"
+                            oninput="updateMrp('${id}', this.value)">
+                    </div>` : ''}
+                `;
+                // append controls inside item
+                const wrap = document.createElement('div');
+                wrap.style.cssText = 'width:100%';
+                wrap.appendChild(ctrl);
+                item.appendChild(wrap);
+            }
+
+            item.addEventListener('click', () => toggleVaccine(cat, v.brand, v.mrp));
+            list.appendChild(item);
+        });
+    });
+
+    noRes.style.display = count === 0 ? 'block' : 'none';
+    updateCount();
+}
+
+function toggleVaccine(cat, brand, mrp) {
+    const id = `${cat}::${brand}`;
+    if (selected[id]) { delete selected[id]; }
+    else { selected[id] = { category: cat, brand, mrp, quantity: 1 }; }
+    renderVaccines();
+    calcTotal();
+}
+
+function changeQty(id, delta) {
+    if (!selected[id]) return;
+    selected[id].quantity = Math.max(1, selected[id].quantity + delta);
+    document.getElementById(`qty_${id}`).textContent = selected[id].quantity;
+    calcTotal();
+}
+
+function updateMrp(id, val) {
+    if (!selected[id]) return;
+    selected[id].mrp = parseFloat(val) || 0;
+    calcTotal();
+}
+
+function updateCount() {
+    const n = Object.keys(selected).length;
+    document.getElementById('vaccCount').textContent = `✓ ${n} selected`;
+}
+
+// ════════════════════════════════════════════════
+//  DOC TYPE & PRICING
+// ════════════════════════════════════════════════
+function isQuotation() {
+    return document.querySelector('input[name="docType"]:checked').value === 'quotation';
+}
+
+function toggleDocType() {
+    const q = isQuotation();
+    document.getElementById('pricingCard').style.display = q ? 'block' : 'none';
+    document.getElementById('summaryCard').style.display = q ? 'block' : 'none';
+    renderVaccines();
+    calcTotal();
+}
+
+function handleOptOut() {
+    const out = document.getElementById('optOut').checked;
+    document.getElementById('consultations').disabled = out;
+    if (out) document.getElementById('consultations').value = '0';
+    calcTotal();
+}
+
+function calcTotal() {
+    if (!isQuotation()) return;
+    const sub = Object.values(selected).reduce((s, v) => s + v.mrp * v.quantity, 0);
+    const disc = parseFloat(document.getElementById('discount').value) + (document.getElementById('optOut').checked ? 2 : 0);
+    const discAmt = sub * disc / 100;
+    const consult = parseInt(document.getElementById('consultations').value) * 500;
+    const total = sub - discAmt;
+    document.getElementById('sumSubtotal').textContent = `₹${sub.toLocaleString()}`;
+    document.getElementById('sumDiscount').textContent = `−₹${discAmt.toLocaleString()} (${disc}%)`;
+    document.getElementById('sumConsult').textContent = `₹${consult.toLocaleString()}`;
+    document.getElementById('sumTotal').textContent = `₹${total.toLocaleString()}`;
+}
+
+// ════════════════════════════════════════════════
+//  CUSTOM VACCINE
+// ════════════════════════════════════════════════
+function openCustomModal() { document.getElementById('customModal').classList.add('open'); }
+function closeCustomModal() { document.getElementById('customModal').classList.remove('open'); }
+
+function saveCustom() {
+    const cat = document.getElementById('cstCat').value.trim();
+    const brand = document.getElementById('cstBrand').value.trim();
+    const mrp = parseFloat(document.getElementById('cstMrp').value);
+    if (!cat || !brand || isNaN(mrp) || mrp < 0) { alert('Please fill all fields.'); return; }
+
+    if (!vaccineData[cat]) {
+        vaccineData[cat] = [];
+        buildFilterChips();
+        buildCatDatalist();
+    }
+    vaccineData[cat].push({ brand, mrp, custom: true });
+    closeCustomModal();
+    document.getElementById('cstCat').value = '';
+    document.getElementById('cstBrand').value = '';
+    document.getElementById('cstMrp').value = '';
+    renderVaccines();
+}
+
+// ════════════════════════════════════════════════
+//  GENERATE TEXT
+// ════════════════════════════════════════════════
+function buildText() {
+    const isQ = isQuotation();
+    const child = document.getElementById('childName').value || '—';
+    const dob = document.getElementById('dob').value || '—';
+    const parent = document.getElementById('parentName').value || '—';
+    const p1 = document.getElementById('phone1').value || '—';
+    const p2 = document.getElementById('phone2').value;
+    const reg = document.getElementById('clinicRegNo').value;
+    const card = document.getElementById('cardSent').checked;
+    const addr = document.getElementById('addressShared').checked;
+
+    let t = `🐼 *VACCINE PANDA — ${isQ ? 'QUOTATION' : 'DUE LIST'}*\n\n`;
+    t += `*Patient:*\nChild: ${child}\nDOB: ${dob}\nParent: ${parent}\n`;
+    t += `Phone: ${p1}${p2 ? ', ' + p2 : ''}\n`;
+    if (reg) t += `Reg No: ${reg}\n`;
+    t += `Card Sent: ${card ? 'Yes' : 'No'} | Address Shared: ${addr ? 'Yes' : 'No'}\n\n`;
+
+    if (isQ) {
+        t += `*Vaccines:*\n`;
+        Object.values(selected).forEach((v, i) => {
+            t += `${i+1}. ${v.brand} (${v.category}) — ₹${v.mrp} × ${v.quantity} = ₹${(v.mrp*v.quantity).toLocaleString()}\n`;
+        });
+        const sub = Object.values(selected).reduce((s,v) => s+v.mrp*v.quantity, 0);
+        const disc = parseFloat(document.getElementById('discount').value) + (document.getElementById('optOut').checked ? 2 : 0);
+        const discAmt = sub * disc / 100;
+        const consult = parseInt(document.getElementById('consultations').value);
+        const total = sub - discAmt;
+        t += `\n*Subtotal:* ₹${sub.toLocaleString()}\n*Discount (${disc}%):* −₹${discAmt.toLocaleString()}\n`;
+        if (consult > 0) t += `*Free Consultations:* ${consult} × ₹500 = ₹${(consult*500).toLocaleString()} (valid 2 years)\n`;
+        t += `\n*TOTAL PAYABLE: ₹${total.toLocaleString()}*\n`;
+    } else {
+        t += `*Due Vaccines:*\n`;
+        Object.values(selected).forEach((v, i) => {
+            t += `${i+1}. ${v.brand} (${v.category})${v.quantity > 1 ? ' × '+v.quantity : ''}\n`;
+        });
+        t += `\n*Total: ${Object.keys(selected).length} vaccine(s)*\n`;
+    }
+    return t;
+}
+
+// ════════════════════════════════════════════════
+//  ACTIONS
+// ════════════════════════════════════════════════
+function handleAction(action) {
+    if (Object.keys(selected).length === 0) { alert('Please select at least one vaccine.'); return; }
+
+    const text = buildText();
+    const companyPhone = '919999109040';
+    const rawPhone = document.getElementById('phone1').value.replace(/\D/g, '');
+    // For India: if 10 digits, prepend 91; if already has country code keep it
+    const customerPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+
+    if (action === 'YES') {
+        // Send directly to CUSTOMER's WhatsApp
+        const msg = text + '\n\n✅ *Proceeding — thank you for choosing Vaccine Panda!* 🐼';
+        if (!customerPhone || customerPhone.length < 10) {
+            alert('Please enter the customer\'s phone number first.');
+            return;
+        }
+        const url = `https://wa.me/${customerPhone}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+    } else {
+        const labels = { NO: '❌ DECLINED', EDIT: '✏️ WANTS TO EDIT', DOCTOR: '👨‍⚕️ WANTS DOCTOR', QUERY: '❓ QUERY' };
+        const teamMsg = `${labels[action]}\n\n${text}\n\n⚠️ Action Required: Follow up with patient.`;
+        const url = `https://wa.me/${companyPhone}?text=${encodeURIComponent(teamMsg)}`;
+        window.open(url, '_blank');
+    }
+}
+
+// ════════════════════════════════════════════════
+//  PDF
+// ════════════════════════════════════════════════
+function downloadPDF() {
+    if (Object.keys(selected).length === 0) { alert('Please select at least one vaccine.'); return; }
+
+    const isQ = isQuotation();
+    const child = document.getElementById('childName').value || '—';
+    const dob = document.getElementById('dob').value || '—';
+    const parent = document.getElementById('parentName').value || '—';
+    const p1 = document.getElementById('phone1').value || '—';
+    const p2 = document.getElementById('phone2').value;
+    const reg = document.getElementById('clinicRegNo').value;
+    const card = document.getElementById('cardSent').checked;
+    const addr = document.getElementById('addressShared').checked;
+
+    let rows = '';
+    if (isQ) {
+        rows = Object.values(selected).map((v,i) => `
+            <tr>
+                <td>${i+1}</td><td>${v.brand}</td><td>${v.category}</td>
+                <td>₹${v.mrp.toLocaleString()}</td><td>${v.quantity}</td>
+                <td>₹${(v.mrp*v.quantity).toLocaleString()}</td>
+            </tr>`).join('');
+
+        const sub = Object.values(selected).reduce((s,v)=>s+v.mrp*v.quantity, 0);
+        const disc = parseFloat(document.getElementById('discount').value)+(document.getElementById('optOut').checked?2:0);
+        const discAmt = sub*disc/100;
+        const consult = parseInt(document.getElementById('consultations').value);
+        const total = sub - discAmt;
+
+        const html = pdfTemplate({
+            title:'QUOTATION', accentColor:'#7c6fdb',
+            child, dob, parent, p1, p2, reg, card, addr,
+            tableHead:`<th>#</th><th>Vaccine</th><th>Category</th><th>MRP</th><th>Qty</th><th>Total</th>`,
+            rows,
+            footer: `
+                <div style="margin-top:24px;padding:20px;background:#f4f4ff;border-radius:8px;">
+                    <div style="display:flex;justify-content:space-between;margin:6px 0;font-size:15px;"><span>Subtotal</span><span>₹${sub.toLocaleString()}</span></div>
+                    <div style="display:flex;justify-content:space-between;margin:6px 0;font-size:15px;color:#c00;"><span>Discount (${disc}%)</span><span>−₹${discAmt.toLocaleString()}</span></div>
+                    ${consult > 0 ? `<div style="display:flex;justify-content:space-between;margin:6px 0;font-size:15px;color:green;"><span>Free Consultations (${consult}×₹500)</span><span>₹${(consult*500).toLocaleString()}</span></div>` : ''}
+                    <div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:2px solid #7c6fdb;font-size:22px;font-weight:900;color:#7c6fdb;"><span>TOTAL PAYABLE</span><span>₹${total.toLocaleString()}</span></div>
+                </div>`
+        });
+        openPrint(html);
+    } else {
+        rows = Object.values(selected).map((v,i) => `
+            <tr>
+                <td>${i+1}</td><td>${v.brand}</td><td>${v.category}</td>
+                <td>${v.quantity > 1 ? v.quantity+' doses' : '1 dose'}</td>
+            </tr>`).join('');
+        const html = pdfTemplate({
+            title:'DUE LIST', accentColor:'#4ecb71',
+            child, dob, parent, p1, p2, reg, card, addr,
+            tableHead:`<th>#</th><th>Vaccine</th><th>Category</th><th>Qty</th>`,
+            rows,
+            footer:`<div style="text-align:center;margin-top:20px;padding:14px;background:#e8f8ee;border-radius:8px;font-size:18px;font-weight:900;color:#2a9a4a;">Total Vaccines: ${Object.keys(selected).length}</div>`
+        });
+        openPrint(html);
+    }
+}
+
+function pdfTemplate({title, accentColor, child, dob, parent, p1, p2, reg, card, addr, tableHead, rows, footer}) {
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#222;}
+  h1{color:${accentColor};margin:0;font-size:28px;}
+  .hdr{text-align:center;border-bottom:3px solid ${accentColor};padding-bottom:18px;margin-bottom:22px;}
+  .hdr p{color:#777;margin:4px 0;font-size:14px;}
+  .sec-title{background:${accentColor};color:white;padding:9px 12px;font-weight:bold;margin-bottom:10px;border-radius:4px;}
+  .info{display:flex;margin:7px 0;font-size:14px;}
+  .lbl{width:180px;font-weight:bold;color:#555;}
+  .val{color:#333;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;}
+  th{background:${accentColor};color:white;padding:10px;text-align:left;font-size:14px;}
+  td{padding:9px;border-bottom:1px solid #e0e0e0;font-size:14px;}
+  tr:nth-child(even) td{background:#fafafa;}
+  .footer-note{text-align:center;margin-top:36px;padding-top:16px;border-top:2px solid ${accentColor};color:#888;font-size:13px;}
+</style></head><body>
+<div class="hdr">
+  <h1>🐼 VACCINE PANDA</h1>
+  <p>${title}</p>
+  <p>Date: ${new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'long',year:'numeric'})}</p>
+</div>
+<div class="sec-title">Patient Information</div>
+<div class="info"><div class="lbl">Child Name:</div><div class="val">${child}</div></div>
+<div class="info"><div class="lbl">Date of Birth:</div><div class="val">${dob}</div></div>
+<div class="info"><div class="lbl">Parent Name:</div><div class="val">${parent}</div></div>
+<div class="info"><div class="lbl">Phone:</div><div class="val">${p1}${p2?', '+p2:''}</div></div>
+${reg?`<div class="info"><div class="lbl">Clinic Reg No:</div><div class="val">${reg}</div></div>`:''}
+<div class="info"><div class="lbl">Card Sent:</div><div class="val">${card?'Yes':'No'}</div></div>
+<div class="info"><div class="lbl">Address Shared:</div><div class="val">${addr?'Yes':'No'}</div></div>
+<br>
+<div class="sec-title">Vaccines</div>
+<table><thead><tr>${tableHead}</tr></thead><tbody>${rows}</tbody></table>
+${footer}
+<div class="footer-note"><strong>Thank you for choosing Vaccine Panda! 🐼</strong><br>For queries: 9999109040</div>
+</body></html>`;
+}
+
+function openPrint(html) {
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => w.print();
+}
+
+// ════════════════════════════════════════════════
+//  PWA MANIFEST (injected dynamically)
+// ════════════════════════════════════════════════
+(function() {
+    const manifest = {
+        name: "Vaccine Panda",
+        short_name: "VaxPanda",
+        description: "Due List & Quotation Maker",
+        start_url: ".",
+        display: "standalone",
+        background_color: "#0d0d1a",
+        theme_color: "#7c6fdb",
+        icons: [
+            { src: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f43c.png", sizes: "72x72", type: "image/png" },
+            { src: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f43c.png", sizes: "192x192", type: "image/png" },
+            { src: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f43c.png", sizes: "512x512", type: "image/png" }
+        ]
+    };
+    const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+    document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+})();
+
+// ════════════════════════════════════════════════
+//  SERVICE WORKER (PWA offline support)
+// ════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+    const swCode = `
+self.addEventListener('install', e => e.waitUntil(
+    caches.open('vp-v1').then(c => c.addAll(['./', './index.html']))
+));
+self.addEventListener('fetch', e => e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request))
+));`;
+    const swBlob = new Blob([swCode], {type:'application/javascript'});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+}
+
+// Boot
+init();
+</script>
+</body>
+</html>
