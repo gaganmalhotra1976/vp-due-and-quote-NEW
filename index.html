@@ -525,9 +525,25 @@
 
   /* PDF PRINT */
   @media print {
-    body { background: white; }
-    .topbar, .mode-tabs, #authScreen, .download-section, .action-btn, .add-custom-btn, .btn-primary, #selectedPreview { display: none !important; }
-    .section { box-shadow: none; border: 1px solid #e2e8f0; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white !important; }
+
+    .topbar, .mode-tabs, #authScreen, .download-section,
+    .action-btn, .add-custom-btn, #customForm, .btn-primary,
+    .vaccine-search-wrap, .selected-count, #vaccineCategories,
+    #actionsSection, #discountSection { display: none !important; }
+
+    #selectedPreview {
+      display: block !important;
+      border: 1.5px solid #22c55e !important;
+      border-radius: 10px !important;
+      padding: 14px !important;
+      margin: 8px 16px !important;
+      background: #f0fdf4 !important;
+    }
+
+    .section { box-shadow: none !important; border: 1px solid #e2e8f0 !important; page-break-inside: avoid; }
+    #summarySection { display: block !important; }
   }
 </style>
 </head>
@@ -682,17 +698,33 @@
   <div class="section" id="actionsSection">
     <div class="section-title">⚡ Actions</div>
     <div class="action-grid">
-      <button class="action-btn btn-yes">✓ YES — Proceed</button>
-      <button class="action-btn btn-no">✗ NO — Decline</button>
-      <button class="action-btn btn-edit">✎ Edit</button>
-      <button class="action-btn btn-doctor">👨‍⚕️ Talk to Doctor</button>
-      <button class="action-btn btn-query" style="grid-column:1/-1">❓ Query</button>
+      <button class="action-btn btn-yes" onclick="setStatus('yes')">✓ YES — Proceed</button>
+      <button class="action-btn btn-no" onclick="setStatus('no')">✗ NO — Decline</button>
+      <button class="action-btn btn-edit" onclick="setStatus('edit')">✎ Edit</button>
+      <button class="action-btn btn-doctor" onclick="setStatus('doctor')">👨‍⚕️ Talk to Doctor</button>
+      <button class="action-btn btn-query" style="grid-column:1/-1" onclick="setStatus('query')">❓ Query</button>
     </div>
+    <div id="statusBanner" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-weight:700;font-size:14px;text-align:center;"></div>
   </div>
 
-  <!-- DOWNLOAD BUTTON -->
+  <!-- DOWNLOAD + SHARE BUTTONS -->
   <div class="download-section">
     <button class="btn-download" onclick="downloadPDF()">📥 Download as PDF</button>
+    <button class="btn-download" onclick="shareWhatsApp()" style="background:linear-gradient(135deg,#25d366,#128c7e);">💬 Share on WhatsApp</button>
+  </div>
+
+  <!-- WHATSAPP SHARE MODAL -->
+  <div id="waModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:20px;padding:24px;margin:20px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="font-family:'Nunito',sans-serif;font-weight:900;font-size:18px;color:#16a34a;margin-bottom:6px;">💬 Share on WhatsApp</div>
+      <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Enter the patient's mobile number to send the quotation</div>
+      <label style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Mobile Number</label>
+      <input id="waPhone" type="tel" placeholder="91XXXXXXXXXX" style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;margin:6px 0 16px;font-family:'Poppins',sans-serif;outline:none;box-sizing:border-box;" oninput="this.style.borderColor='#22c55e'">
+      <div style="display:flex;gap:10px;">
+        <button onclick="sendWhatsApp()" style="flex:1;padding:12px;background:#25d366;color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-weight:800;font-size:15px;cursor:pointer;">Send ✓</button>
+        <button onclick="closeWaModal()" style="flex:1;padding:12px;background:#f1f5f9;color:#64748b;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-weight:700;font-size:15px;cursor:pointer;">Cancel</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1049,9 +1081,237 @@ function recalc() {
   updateSelectedPreview();
 }
 
+// ====================== STATUS BUTTONS ======================
+let currentStatus = '';
+function setStatus(s) {
+  currentStatus = s;
+  const banner = document.getElementById('statusBanner');
+  const configs = {
+    yes:    { bg: '#dcfce7', color: '#16a34a', text: '✅ Patient has ACCEPTED the quotation' },
+    no:     { bg: '#fee2e2', color: '#ef4444', text: '❌ Patient has DECLINED the quotation' },
+    edit:   { bg: '#fef3c7', color: '#92400e', text: '✎ Quotation sent for EDITING' },
+    doctor: { bg: '#dbeafe', color: '#1d4ed8', text: '👨‍⚕️ Referred to DOCTOR for consultation' },
+    query:  { bg: '#ede9fe', color: '#6d28d9', text: '❓ Patient has a QUERY — follow up needed' },
+  };
+  const c = configs[s];
+  banner.style.display = 'block';
+  banner.style.background = c.bg;
+  banner.style.color = c.color;
+  banner.textContent = c.text;
+  // Highlight active button
+  document.querySelectorAll('.action-btn').forEach(b => b.style.opacity = '0.5');
+  event.target.style.opacity = '1';
+  event.target.style.transform = 'scale(1.04)';
+}
+
+// ====================== WHATSAPP SHARE ======================
+function shareWhatsApp() {
+  document.getElementById('waPhone').value = document.getElementById('phone1').value.replace(/\D/g,'') || '';
+  document.getElementById('waModal').style.display = 'flex';
+}
+function closeWaModal() {
+  document.getElementById('waModal').style.display = 'none';
+}
+function sendWhatsApp() {
+  let phone = document.getElementById('waPhone').value.replace(/\D/g,'');
+  if (!phone) { alert('Please enter a mobile number'); return; }
+  if (!phone.startsWith('91') && phone.length === 10) phone = '91' + phone;
+
+  const msg = buildWhatsAppText();
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+  closeWaModal();
+}
+
+function buildWhatsAppText() {
+  const all = getAllVaccines();
+  const childName = document.getElementById('childName').value || '—';
+  const dob = document.getElementById('dob').value || '—';
+  const parentName = document.getElementById('parentName').value || '—';
+  const regNo = document.getElementById('regNo').value || '—';
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const validity = new Date(today); validity.setFullYear(validity.getFullYear() + 1);
+  const validityStr = validity.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+  let subtotal = 0;
+  let vaccineLines = '';
+  selectedVaccines.forEach(key => {
+    const [cat, brand] = key.split('|');
+    const v = all.find(x => x.category === cat && x.brand === brand);
+    if (!v) return;
+    subtotal += v.mrp;
+    vaccineLines += `  • ${brand} (${cat}) — ₹${v.mrp.toLocaleString('en-IN')}\n`;
+  });
+
+  let discPct = parseFloat(document.getElementById('discountPct')?.value || 0);
+  const optOut = document.getElementById('optOutCons')?.checked;
+  const freeConsEl = document.getElementById('freeCons');
+  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
+  const consCount = optOut ? 0 : (freeConsEl ? freeConsEl.selectedIndex : 0);
+  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
+  if (optOut) discPct += 2;
+  const discAmt = Math.round(subtotal * discPct / 100);
+  const total = subtotal - discAmt;
+
+  let msg = `🐼 *VACCINE PANDA – QUOTATION*\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `📅 Date: ${todayStr}\n\n`;
+  msg += `👶 *Patient Details*\n`;
+  msg += `Name: ${childName}\n`;
+  msg += `DOB: ${dob}\n`;
+  msg += `Parent: ${parentName}\n`;
+  msg += `Reg No: ${regNo}\n\n`;
+  msg += `💉 *Selected Vaccines*\n`;
+  msg += vaccineLines || '  (none selected)\n';
+  msg += `\n💰 *Summary*\n`;
+  msg += `Subtotal: ₹${subtotal.toLocaleString('en-IN')}\n`;
+  if (discPct > 0) msg += `Discount (${discPct}%): −₹${discAmt.toLocaleString('en-IN')}\n`;
+  if (!optOut && consVal > 0) {
+    msg += `Free Consultations: ${consCountLabel}\n`;
+    msg += `  📅 Valid till: ${validityStr}\n`;
+  }
+  msg += `*Total Payable: ₹${total.toLocaleString('en-IN')}*\n`;
+  msg += `\n_Quote valid for 30 days_\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `🐼 Vaccine Panda | thevaccinepanda.com`;
+  return msg;
+}
+
 // ====================== PDF DOWNLOAD ======================
 function downloadPDF() {
-  window.print();
+  const all = getAllVaccines();
+  const childName = document.getElementById('childName').value || '—';
+  const dob = document.getElementById('dob').value || '—';
+  const parentName = document.getElementById('parentName').value || '—';
+  const phone1 = document.getElementById('phone1').value || '—';
+  const phone2 = document.getElementById('phone2').value || '—';
+  const regNo = document.getElementById('regNo').value || '—';
+  const cardSent = document.getElementById('cardSent').checked ? '✅ Yes' : '❌ No';
+  const addrShared = document.getElementById('addrShared').checked ? '✅ Yes' : '❌ No';
+
+  const today = new Date();
+  const todayStr = today.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+  const validity = new Date(today); validity.setFullYear(validity.getFullYear() + 1);
+  const validityStr = validity.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+
+  let subtotal = 0;
+  let vaccineRows = '';
+  if (selectedVaccines.size === 0) {
+    vaccineRows = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:12px">No vaccines selected</td></tr>';
+  } else {
+    selectedVaccines.forEach(key => {
+      const [cat, brand] = key.split('|');
+      const v = all.find(x => x.category === cat && x.brand === brand);
+      if (!v) return;
+      subtotal += v.mrp;
+      vaccineRows += `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${brand}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${cat}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#0d9488">₹${v.mrp.toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+  }
+
+  let discPct = parseFloat(document.getElementById('discountPct')?.value || 0);
+  const optOut = document.getElementById('optOutCons')?.checked;
+  const freeConsEl = document.getElementById('freeCons');
+  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
+  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
+  if (optOut) discPct += 2;
+  const discAmt = Math.round(subtotal * discPct / 100);
+  const total = subtotal - discAmt;
+  const discLabel = discPct > 0 ? `${discPct}%${optOut?' (incl. 2% opt-out bonus)':''}` : 'No discount';
+
+  // Free consultation row for PDF
+  let consRow = '';
+  if (optOut) {
+    consRow = `<div class="sum-row"><span>Free Consultations</span><span style="color:#64748b">Opted out (extra 2% discount applied)</span></div>`;
+  } else if (consVal > 0) {
+    consRow = `<div class="sum-row"><span>Free Consultations</span><span style="color:#16a34a;font-weight:700">${consCountLabel}</span></div>
+    <div class="sum-row" style="font-size:12px;color:#64748b"><span>&nbsp;&nbsp;&nbsp;📅 Valid from ${todayStr} to ${validityStr}</span><span>(1 year)</span></div>`;
+  } else {
+    consRow = `<div class="sum-row"><span>Free Consultations</span><span>None</span></div>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Vaccine Panda – Quotation – ${childName}</title>
+<style>
+  body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; font-size: 14px; }
+  .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #22c55e; padding-bottom: 14px; margin-bottom: 20px; }
+  .brand { font-size: 22px; font-weight: 900; color: #16a34a; }
+  .subtitle { font-size: 12px; color: #64748b; }
+  .section { margin-bottom: 18px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid #dcfce7; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+  .info-row { display: flex; gap: 6px; font-size: 13px; }
+  .info-label { color: #64748b; min-width: 110px; }
+  .info-val { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f0fdf4; padding: 8px 10px; text-align: left; font-size: 12px; color: #16a34a; font-weight: 700; }
+  th:last-child { text-align: right; }
+  .summary-box { background: #f0fdf4; border: 1.5px solid #22c55e; border-radius: 10px; padding: 14px 16px; margin-top: 18px; }
+  .sum-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 13px; }
+  .sum-row.total { font-size: 17px; font-weight: 900; color: #16a34a; border-top: 2px solid #22c55e; margin-top: 10px; padding-top: 10px; }
+  .validity-box { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 13px; }
+  .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  @media print { body { padding: 12px; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:32px">🐼</span>
+    <div><div class="brand">Vaccine Panda</div><div class="subtitle">Due List & Quotation</div></div>
+  </div>
+  <div style="text-align:right;font-size:12px;color:#64748b"><b>Date:</b> ${todayStr}<br><span style="color:#94a3b8">Quote valid for 30 days</span></div>
+</div>
+
+<div class="section">
+  <div class="section-title">👶 Patient Information</div>
+  <div class="info-grid">
+    <div class="info-row"><span class="info-label">Child Name:</span><span class="info-val">${childName}</span></div>
+    <div class="info-row"><span class="info-label">Date of Birth:</span><span class="info-val">${dob}</span></div>
+    <div class="info-row"><span class="info-label">Parent Name:</span><span class="info-val">${parentName}</span></div>
+    <div class="info-row"><span class="info-label">Primary Phone:</span><span class="info-val">${phone1}</span></div>
+    <div class="info-row"><span class="info-label">Secondary Phone:</span><span class="info-val">${phone2}</span></div>
+    <div class="info-row"><span class="info-label">Clinic Reg No:</span><span class="info-val">${regNo}</span></div>
+    <div class="info-row"><span class="info-label">Card Sent:</span><span class="info-val">${cardSent}</span></div>
+    <div class="info-row"><span class="info-label">Address Shared:</span><span class="info-val">${addrShared}</span></div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">💉 Selected Vaccines (${selectedVaccines.size})</div>
+  <table>
+    <thead><tr><th>Brand</th><th>Category</th><th style="text-align:right">MRP</th></tr></thead>
+    <tbody>${vaccineRows}</tbody>
+  </table>
+</div>
+
+<div class="summary-box">
+  <div class="sum-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
+  <div class="sum-row"><span>Discount (${discLabel})</span><span style="color:#ef4444">−₹${discAmt.toLocaleString('en-IN')}</span></div>
+  ${consRow}
+  <div class="sum-row total"><span>Total Payable</span><span>₹${total.toLocaleString('en-IN')}</span></div>
+</div>
+
+${(!optOut && consVal > 0) ? `<div class="validity-box">
+  🎁 <b>${consCountLabel} Free Consultation${parseInt(consCountLabel)>1?'s':''}</b> included with this quotation<br>
+  📅 <b>Valid from:</b> ${todayStr} &nbsp;|&nbsp; <b>Valid till:</b> ${validityStr} (1 year)<br>
+  <span style="color:#92400e;font-size:12px">Please show this quotation to avail free consultations.</span>
+</div>` : ''}
+
+<div class="footer">Generated by Vaccine Panda 🐼 | thevaccinepanda.com</div>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => win.print();
 }
 
 // ====================== INIT ======================
