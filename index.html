@@ -344,9 +344,7 @@
     flex-shrink: 0;
   }
 
-  /* ============================================
-     SELECTED VACCINES PREVIEW — NEW FEATURE
-     ============================================ */
+  /* SELECTED VACCINES PREVIEW */
   #selectedPreview {
     display: none;
     background: linear-gradient(135deg, #f0fdf4, #f0fdfa);
@@ -463,6 +461,7 @@
     font-size: 13px;
     color: #92400e;
     cursor: pointer;
+    transition: opacity 0.2s;
   }
   .opt-out-row input[type="checkbox"] { accent-color: var(--amber); }
 
@@ -650,9 +649,7 @@
     </div>
   </div>
 
-  <!-- ============================================
-       SELECTED VACCINES PREVIEW — NEW FEATURE
-       ============================================ -->
+  <!-- SELECTED VACCINES PREVIEW -->
   <div id="selectedPreview">
     <div class="preview-title">🧾 Selected Vaccines Preview</div>
     <div class="preview-vaccine-list" id="previewList"></div>
@@ -667,16 +664,12 @@
     <div class="section-title">🏷️ Discounts & Offers</div>
     <div class="discount-grid">
       <div class="field-group">
-        <label>Discount %</label>
-        <select id="discountPct" onchange="recalc()">
+        <label>Discount % (auto)</label>
+        <select id="discountPct" disabled style="background:#f0fdf4;color:var(--green-dark);font-weight:700;cursor:default;">
           <option value="0">No Discount</option>
-          <option value="5">5%</option>
-          <option value="7">7%</option>
-          <option value="9">9%</option>
-          <option value="10">10%</option>
-          <option value="12">12%</option>
-          <option value="15">15%</option>
-          <option value="20">20%</option>
+          <option value="5">5% (bill &lt; ₹5,000)</option>
+          <option value="7">7% (₹5,000 – ₹10,000)</option>
+          <option value="9">9% (bill &gt; ₹10,000)</option>
         </select>
       </div>
       <div class="field-group">
@@ -698,9 +691,9 @@
         </select>
       </div>
     </div>
-    <label class="opt-out-row">
+    <label class="opt-out-row" id="optOutRow">
       <input type="checkbox" id="optOutCons" onchange="recalc()">
-      Opt out of free consultations for extra 2% discount
+      Opt out of free consultations (₹5k–₹10k bill: flat ₹100 off · bill &gt;₹10k: flat ₹500 off)
     </label>
   </div>
 
@@ -710,6 +703,7 @@
     <div class="summary-rows">
       <div class="summary-row"><span class="label">Subtotal</span><span class="val" id="sumSubtotal">₹0</span></div>
       <div class="summary-row"><span class="label">Discount</span><span class="val" id="sumDiscount" style="color:var(--red)">−₹0</span></div>
+      <div class="summary-row"><span class="label">Opt-out saving</span><span class="val" id="sumOptOut" style="color:var(--red)">₹0</span></div>
       <div class="summary-row"><span class="label">Consultations value</span><span class="val" id="sumCons">₹0</span></div>
       <div class="summary-row total"><span>Total Payable</span><span id="sumTotal">₹0</span></div>
     </div>
@@ -750,7 +744,7 @@
 </div>
 
 <script>
-// ====================== DATA (Source: Vaccine_Inventory_Merged_April_2026_final.xlsx) ======================
+// ====================== DATA ======================
 const VACCINES = [
   // BCG
   { category: "BCG", brand: "Tubervac (BCG)", mrp: 107 },
@@ -772,7 +766,7 @@ const VACCINES = [
   { category: "Typhoid", brand: "Typbar TCV PFS", mrp: 2353.45 },
   { category: "Typhoid", brand: "Typhi Bev", mrp: 2366 },
   { category: "Typhoid", brand: "Zyvac TCV PFS", mrp: 2622 },
-  // DPT (Booster / Td / Tdap)
+  // Tdap
   { category: "Tdap", brand: "BOOSTRIX", mrp: 1690 },
   { category: "Tdap", brand: "ADACEL", mrp: 1400 },
   // Cervical Cancer (HPV)
@@ -783,8 +777,8 @@ const VACCINES = [
   // Hexavalent DPT
   { category: "Hexavalent DPT (Painful)", brand: "EASY SIX", mrp: 2995 },
   { category: "Hexavalent DPT (Painful)", brand: "HEXASIIL PFS", mrp: 2690 },
-  // Hexavalent DPT Painless
-  { category: "Hexavalent DPT (Painless)", brand: "HEXAXIM", mrp: 4330 },
+  // Hexavalent DPT Painless — HEXAXIM updated to 4690
+  { category: "Hexavalent DPT (Painless)", brand: "HEXAXIM", mrp: 4690 },
   { category: "Hexavalent DPT (Painless)", brand: "INFANRIX HEXA - GSK", mrp: 3735 },
   // Pentavalent DPT
   { category: "Pentavalent DPT (Painful)", brand: "EasyFourPol", mrp: 2145 },
@@ -838,24 +832,20 @@ const VACCINES = [
   { category: "Tetanus", brand: "Teddyvac", mrp: 24.15 },
 ];
 
-// Track custom vaccines
 let customVaccines = [];
-let selectedVaccines = new Map(); // key = "category|brand", value = {qty, priority}
+let selectedVaccines = new Map();
 let currentMode = 'quote';
 let searchQuery = '';
 
 // ====================== AUTH ======================
-const CORRECT_PIN = '1234'; // Change this as needed
+const CORRECT_PIN = '1234';
 
 function checkAuth() {
   const stored = localStorage.getItem('vp_session');
   if (stored) {
     try {
       const s = JSON.parse(stored);
-      if (s.expiry > Date.now()) {
-        showApp();
-        return;
-      }
+      if (s.expiry > Date.now()) { showApp(); return; }
     } catch(e) {}
   }
   document.getElementById('authScreen').style.display = 'flex';
@@ -895,39 +885,31 @@ function setMode(mode) {
   currentMode = mode;
   document.getElementById('tabQuote').classList.toggle('active', mode === 'quote');
   document.getElementById('tabDue').classList.toggle('active', mode === 'due');
-  const quoteOnly = ['discountSection','summarySection','actionsSection'];
-  quoteOnly.forEach(id => {
+  ['discountSection','summarySection','actionsSection'].forEach(id => {
     document.getElementById(id).style.display = mode === 'quote' ? 'block' : 'none';
   });
   recalc();
 }
 
 // ====================== VACCINES UI ======================
-function getAllVaccines() {
-  return [...VACCINES, ...customVaccines];
-}
+function getAllVaccines() { return [...VACCINES, ...customVaccines]; }
 
 function getCategories() {
   const cats = [];
-  getAllVaccines().forEach(v => {
-    if (!cats.includes(v.category)) cats.push(v.category);
-  });
+  getAllVaccines().forEach(v => { if (!cats.includes(v.category)) cats.push(v.category); });
   return cats;
 }
 
 function vaccineKey(v) { return v.category + '|' + v.brand; }
-function getVacEntry(key) { return selectedVaccines.get(key) || { qty: 1, priority: '' }; }
 
 function buildVaccineUI() {
   const container = document.getElementById('vaccineCategories');
   container.innerHTML = '';
   const q = searchQuery.toLowerCase();
   const all = getAllVaccines();
-  const categories = getCategories();
-
   let anyMatch = false;
 
-  categories.forEach(cat => {
+  getCategories().forEach(cat => {
     const vaccines = all.filter(v => v.category === cat && (
       !q || v.brand.toLowerCase().includes(q) || v.category.toLowerCase().includes(q)
     ));
@@ -940,7 +922,7 @@ function buildVaccineUI() {
     block.innerHTML = `
       <div class="category-header" onclick="toggleCategory('${cat.replace(/'/g,"\\'")}')">
         <span class="category-name">💉 ${cat} ${selectedInCat ? `<span style="background:var(--green);color:white;border-radius:99px;padding:1px 8px;font-size:11px">${selectedInCat}</span>` : ''}</span>
-        <span class="category-toggle${q?'':''}" id="tog_${sanitizeId(cat)}">▼</span>
+        <span class="category-toggle" id="tog_${sanitizeId(cat)}">▼</span>
       </div>
       <div class="category-vaccines${q?' open':''}" id="cat_${sanitizeId(cat)}">
         ${vaccines.map(v => {
@@ -968,20 +950,14 @@ function buildVaccineUI() {
     container.appendChild(block);
   });
 
-  if (!anyMatch) {
-    container.innerHTML = '<div class="no-match">No vaccines match your search.</div>';
-  }
+  if (!anyMatch) container.innerHTML = '<div class="no-match">No vaccines match your search.</div>';
 
   updateSelectedCount();
   updateSelectedPreview();
 }
 
-function sanitizeId(str) {
-  return str.replace(/[^a-zA-Z0-9]/g, '_');
-}
-function escJs(str) {
-  return str.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-}
+function sanitizeId(str) { return str.replace(/[^a-zA-Z0-9]/g, '_'); }
+function escJs(str) { return str.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 function toggleCategory(cat) {
   const id = sanitizeId(cat);
@@ -993,15 +969,11 @@ function toggleCategory(cat) {
 }
 
 function toggleVaccine(category, brand, mrp) {
-  const all = getAllVaccines();
-  const v = all.find(x => x.category === category && x.brand === brand);
+  const v = getAllVaccines().find(x => x.category === category && x.brand === brand);
   if (!v) return;
   const key = vaccineKey(v);
-  if (selectedVaccines.has(key)) {
-    selectedVaccines.delete(key);
-  } else {
-    selectedVaccines.set(key, { qty: 1, priority: '' });
-  }
+  if (selectedVaccines.has(key)) selectedVaccines.delete(key);
+  else selectedVaccines.set(key, { qty: 1, priority: '' });
   buildVaccineUI();
   recalc();
 }
@@ -1010,8 +982,7 @@ function setQty(category, brand, qty, event) {
   if (event) event.stopPropagation();
   const key = category + '|' + brand;
   if (!selectedVaccines.has(key)) return;
-  const entry = selectedVaccines.get(key);
-  selectedVaccines.set(key, { ...entry, qty: Math.max(1, Math.min(5, qty)) });
+  selectedVaccines.set(key, { ...selectedVaccines.get(key), qty: Math.max(1, Math.min(5, qty)) });
   recalc();
   updateSelectedCount();
   updateSelectedPreview();
@@ -1022,9 +993,7 @@ function setPriority(category, brand, priority, event) {
   const key = category + '|' + brand;
   if (!selectedVaccines.has(key)) return;
   const entry = selectedVaccines.get(key);
-  // toggle off if same
-  const newPriority = entry.priority === priority ? '' : priority;
-  selectedVaccines.set(key, { ...entry, priority: newPriority });
+  selectedVaccines.set(key, { ...entry, priority: entry.priority === priority ? '' : priority });
   buildVaccineUI();
 }
 
@@ -1043,28 +1012,23 @@ function updateSelectedCount() {
   const n = selectedVaccines.size;
   let totalQty = 0;
   selectedVaccines.forEach(e => totalQty += e.qty);
-  const txt = n === 0 ? '✓ 0 selected' : `✓ ${n} vaccine${n>1?'s':''} selected (${totalQty} inj total)`;
-  document.getElementById('selectedCount').textContent = txt;
+  document.getElementById('selectedCount').textContent =
+    n === 0 ? '✓ 0 selected' : `✓ ${n} vaccine${n>1?'s':''} selected (${totalQty} inj total)`;
 }
 
-// ====================== SELECTED PREVIEW (NEW FEATURE) ======================
+// ====================== SELECTED PREVIEW ======================
 function updateSelectedPreview() {
   const preview = document.getElementById('selectedPreview');
   const list = document.getElementById('previewList');
-  
-  if (selectedVaccines.size === 0) {
-    preview.style.display = 'none';
-    return;
-  }
+  if (selectedVaccines.size === 0) { preview.style.display = 'none'; return; }
   preview.style.display = 'block';
-  
+
   const all = getAllVaccines();
   let total = 0;
   const rows = [];
 
-  // High priority first, then low, then unset
   const sorted = [...selectedVaccines.entries()].sort((a,b) => {
-    const order = { high: 0, low: 1, '': 2 };
+    const order = { high:0, low:1, '':2 };
     return (order[a[1].priority]||2) - (order[b[1].priority]||2);
   });
 
@@ -1074,8 +1038,10 @@ function updateSelectedPreview() {
     if (!v) return;
     const lineTotal = v.mrp * entry.qty;
     total += lineTotal;
-    const priorityBadge = entry.priority === 'high' ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">🔴 HIGH</span>'
-      : entry.priority === 'low' ? '<span style="background:#fef9c3;color:#ca8a04;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">🟡 LOW</span>' : '';
+    const priorityBadge = entry.priority === 'high'
+      ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">🔴 HIGH</span>'
+      : entry.priority === 'low'
+      ? '<span style="background:#fef9c3;color:#ca8a04;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">🟡 LOW</span>' : '';
     const qtyBadge = entry.qty > 1 ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">×${entry.qty}</span>` : '';
     rows.push(`
       <div class="preview-vaccine-row">
@@ -1094,14 +1060,14 @@ function updateSelectedPreview() {
 
 // ====================== CUSTOM VACCINE ======================
 function toggleCustomForm() {
-  const f = document.getElementById('customForm');
-  f.classList.toggle('open');
+  document.getElementById('customForm').classList.toggle('open');
 }
 
 function populateCustomCategoryDropdown() {
   const sel = document.getElementById('customCategory');
-  const cats = getCategories();
-  sel.innerHTML = '<option value="">Select Category</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('') + '<option value="__new__">+ New Category</option>';
+  sel.innerHTML = '<option value="">Select Category</option>'
+    + getCategories().map(c => `<option value="${c}">${c}</option>`).join('')
+    + '<option value="__new__">+ New Category</option>';
 }
 
 function addCustomVaccine() {
@@ -1109,7 +1075,6 @@ function addCustomVaccine() {
   const brand = document.getElementById('customBrand').value.trim();
   const mrp = parseFloat(document.getElementById('customMRP').value) || 0;
   if (!cat || !brand) { alert('Please fill in category and brand name.'); return; }
-  
   const finalCat = cat === '__new__' ? prompt('Enter new category name:') || 'Custom' : cat;
   customVaccines.push({ category: finalCat, brand, mrp });
   document.getElementById('customBrand').value = '';
@@ -1120,7 +1085,7 @@ function addCustomVaccine() {
 }
 
 // ====================== CALC ======================
-function recalc() {
+function getSubtotal() {
   const all = getAllVaccines();
   let subtotal = 0;
   selectedVaccines.forEach((entry, key) => {
@@ -1128,22 +1093,58 @@ function recalc() {
     const v = all.find(x => x.category === cat && x.brand === brand);
     if (v) subtotal += v.mrp * entry.qty;
   });
+  return subtotal;
+}
 
-  let discPct = parseFloat(document.getElementById('discountPct')?.value || 0);
-  const optOut = document.getElementById('optOutCons')?.checked;
-  const consVal = optOut ? 0 : parseInt(document.getElementById('freeCons')?.value || 0);
-  if (optOut) discPct += 2;
+function recalc() {
+  const subtotal = getSubtotal();
 
-  const discAmt = Math.round(subtotal * discPct / 100);
-  const total = subtotal - discAmt;
+  // Auto discount slab
+  let autoDiscount = 0;
+  if (subtotal > 0 && subtotal < 5000) autoDiscount = 5;
+  else if (subtotal >= 5000 && subtotal <= 10000) autoDiscount = 7;
+  else if (subtotal > 10000) autoDiscount = 9;
+
+  // Update dropdown display
+  const discSel = document.getElementById('discountPct');
+  for (let o of discSel.options) {
+    if (parseFloat(o.value) === autoDiscount) { discSel.value = String(autoDiscount); break; }
+  }
+
+  const discountAmt = Math.round(subtotal * autoDiscount / 100);
+  const afterDiscount = subtotal - discountAmt;
+
+  // Opt-out: only valid for bill > 5000
+  const optOutRow = document.getElementById('optOutRow');
+  const optOutCheck = document.getElementById('optOutCons');
+  const canOptOut = subtotal > 5000;
+  optOutRow.style.opacity = canOptOut ? '1' : '0.4';
+  optOutRow.style.pointerEvents = canOptOut ? 'auto' : 'none';
+  if (!canOptOut) optOutCheck.checked = false;
+
+  const optOut = canOptOut && optOutCheck.checked;
+
+  // Opt-out saving: flat ₹100 for 5k-10k, flat ₹500 for >10k
+  let optOutSaving = 0;
+  if (optOut) {
+    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
+    else if (subtotal > 10000) optOutSaving = 500;
+  }
+
+  const freeCons = parseInt(document.getElementById('freeCons')?.value || 0);
+  const total = Math.max(0, afterDiscount - optOutSaving);
 
   if (currentMode === 'quote') {
     document.getElementById('sumSubtotal').textContent = '₹' + subtotal.toLocaleString('en-IN');
-    document.getElementById('sumDiscount').textContent = '−₹' + discAmt.toLocaleString('en-IN');
-    document.getElementById('sumCons').textContent = '₹' + consVal.toLocaleString('en-IN');
+    document.getElementById('sumDiscount').textContent =
+      autoDiscount ? `−₹${discountAmt.toLocaleString('en-IN')} (${autoDiscount}%)` : '−₹0';
+    document.getElementById('sumOptOut').textContent =
+      optOutSaving ? `−₹${optOutSaving.toLocaleString('en-IN')} (opt-out)` : '₹0';
+    document.getElementById('sumCons').textContent =
+      freeCons ? '₹' + freeCons.toLocaleString('en-IN') : '₹0';
     document.getElementById('sumTotal').textContent = '₹' + total.toLocaleString('en-IN');
   }
-  
+
   updateSelectedPreview();
 }
 
@@ -1164,7 +1165,6 @@ function setStatus(s) {
   banner.style.background = c.bg;
   banner.style.color = c.color;
   banner.textContent = c.text;
-  // Highlight active button
   document.querySelectorAll('.action-btn').forEach(b => b.style.opacity = '0.5');
   event.target.style.opacity = '1';
   event.target.style.transform = 'scale(1.04)';
@@ -1175,17 +1175,13 @@ function shareWhatsApp() {
   document.getElementById('waPhone').value = document.getElementById('phone1').value.replace(/\D/g,'') || '';
   document.getElementById('waModal').style.display = 'flex';
 }
-function closeWaModal() {
-  document.getElementById('waModal').style.display = 'none';
-}
+function closeWaModal() { document.getElementById('waModal').style.display = 'none'; }
+
 function sendWhatsApp() {
   let phone = document.getElementById('waPhone').value.replace(/\D/g,'');
   if (!phone) { alert('Please enter a mobile number'); return; }
   if (!phone.startsWith('91') && phone.length === 10) phone = '91' + phone;
-
-  const msg = buildWhatsAppText();
-  const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(buildWhatsAppText())}`, '_blank');
   closeWaModal();
 }
 
@@ -1200,61 +1196,60 @@ function buildWhatsAppText() {
   const validity = new Date(today); validity.setFullYear(validity.getFullYear() + 1);
   const validityStr = validity.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 
-  let subtotal = 0;
-  let vaccineLines = '';
+  const subtotal = getSubtotal();
+  let autoDiscount = 0;
+  if (subtotal > 0 && subtotal < 5000) autoDiscount = 5;
+  else if (subtotal >= 5000 && subtotal <= 10000) autoDiscount = 7;
+  else if (subtotal > 10000) autoDiscount = 9;
+
+  const discountAmt = Math.round(subtotal * autoDiscount / 100);
+  const afterDiscount = subtotal - discountAmt;
+
+  const optOut = document.getElementById('optOutCons')?.checked && subtotal > 5000;
+  let optOutSaving = 0;
+  if (optOut) {
+    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
+    else if (subtotal > 10000) optOutSaving = 500;
+  }
+
+  const freeConsEl = document.getElementById('freeCons');
+  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
+  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
+  const total = Math.max(0, afterDiscount - optOutSaving);
   const isDueMode = currentMode === 'due';
 
+  let vaccineLines = '';
   const sorted = [...selectedVaccines.entries()].sort((a,b) => {
     const order = { high:0, low:1, '':2 };
     return (order[a[1].priority]||2) - (order[b[1].priority]||2);
   });
-
   sorted.forEach(([key, entry]) => {
     const [cat, brand] = key.split('|');
     const v = all.find(x => x.category === cat && x.brand === brand);
     if (!v) return;
     const lineTotal = v.mrp * entry.qty;
-    subtotal += lineTotal;
     const qtyLabel = entry.qty > 1 ? ` ×${entry.qty}` : '';
     const prioLabel = entry.priority === 'high' ? ' 🔴 HIGH PRIORITY' : entry.priority === 'low' ? ' 🟡 LOW PRIORITY' : '';
     if (isDueMode) {
-      const mrpLabel = v.mrp ? ` — ₹${v.mrp.toLocaleString('en-IN')}` : '';
-      vaccineLines += `  • ${brand}${qtyLabel}${prioLabel} (${cat})${mrpLabel}\n`;
+      vaccineLines += `  • ${brand}${qtyLabel}${prioLabel} (${cat})${v.mrp ? ' — ₹'+v.mrp.toLocaleString('en-IN') : ''}\n`;
     } else {
       vaccineLines += `  • ${brand}${qtyLabel}${prioLabel} (${cat}) — ₹${lineTotal.toLocaleString('en-IN')}\n`;
     }
   });
 
-  let discPct = parseFloat(document.getElementById('discountPct')?.value || 0);
-  const optOut = document.getElementById('optOutCons')?.checked;
-  const freeConsEl = document.getElementById('freeCons');
-  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
-  const consCount = optOut ? 0 : (freeConsEl ? freeConsEl.selectedIndex : 0);
-  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
-  if (optOut) discPct += 2;
-  const discAmt = Math.round(subtotal * discPct / 100);
-  const total = subtotal - discAmt;
-
   let msg = `🐼 *VACCINE PANDA – ${isDueMode ? 'DUE VACCINE LIST' : 'QUOTATION'}*\n`;
   msg += `━━━━━━━━━━━━━━━━━━━━\n`;
   msg += `📅 Date: ${todayStr}\n\n`;
-  msg += `👶 *Patient Details*\n`;
-  msg += `Name: ${childName}\n`;
-  msg += `DOB: ${dob}\n`;
-  msg += `Parent: ${parentName}\n`;
-  msg += `Reg No: ${regNo}\n\n`;
-  msg += `💉 *Selected Vaccines*\n`;
-  msg += vaccineLines || '  (none selected)\n';
+  msg += `👶 *Patient Details*\nName: ${childName}\nDOB: ${dob}\nParent: ${parentName}\nReg No: ${regNo}\n\n`;
+  msg += `💉 *Selected Vaccines*\n${vaccineLines || '  (none selected)\n'}`;
   if (!isDueMode) {
-    msg += `\n💰 *Summary*\n`;
-    msg += `Subtotal: ₹${subtotal.toLocaleString('en-IN')}\n`;
-    if (discPct > 0) msg += `Discount (${discPct}%): −₹${discAmt.toLocaleString('en-IN')}\n`;
+    msg += `\n💰 *Summary*\nSubtotal: ₹${subtotal.toLocaleString('en-IN')}\n`;
+    if (autoDiscount > 0) msg += `Discount (${autoDiscount}%): −₹${discountAmt.toLocaleString('en-IN')}\n`;
+    if (optOutSaving > 0) msg += `Opt-out saving: −₹${optOutSaving.toLocaleString('en-IN')}\n`;
     if (!optOut && consVal > 0) {
-      msg += `Free Consultations: ${consCountLabel}\n`;
-      msg += `  📅 Valid till: ${validityStr}\n`;
+      msg += `Free Consultations: ${consCountLabel}\n  📅 Valid till: ${validityStr}\n`;
     }
-    msg += `*Total Payable: ₹${total.toLocaleString('en-IN')}*\n`;
-    msg += `\n_Quote valid for 30 days_\n`;
+    msg += `*Total Payable: ₹${total.toLocaleString('en-IN')}*\n\n_Quote valid for 30 days_\n`;
   } else {
     msg += `\n_This is a Due Vaccine List (no pricing)_\n`;
   }
@@ -1280,14 +1275,32 @@ function downloadPDF() {
   const validity = new Date(today); validity.setFullYear(validity.getFullYear() + 1);
   const validityStr = validity.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
 
-  let subtotal = 0;
-  let vaccineRows = '';
+  const subtotal = getSubtotal();
+  let autoDiscount = 0;
+  if (subtotal > 0 && subtotal < 5000) autoDiscount = 5;
+  else if (subtotal >= 5000 && subtotal <= 10000) autoDiscount = 7;
+  else if (subtotal > 10000) autoDiscount = 9;
+
+  const discountAmt = Math.round(subtotal * autoDiscount / 100);
+  const afterDiscount = subtotal - discountAmt;
+
+  const optOut = document.getElementById('optOutCons')?.checked && subtotal > 5000;
+  let optOutSaving = 0;
+  if (optOut) {
+    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
+    else if (subtotal > 10000) optOutSaving = 500;
+  }
+
+  const freeConsEl = document.getElementById('freeCons');
+  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
+  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
+  const total = Math.max(0, afterDiscount - optOutSaving);
   const isDueMode = currentMode === 'due';
 
+  let vaccineRows = '';
   if (selectedVaccines.size === 0) {
     vaccineRows = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:12px">No vaccines selected</td></tr>';
   } else {
-    // sort: high priority first, then low, then unset
     const sorted = [...selectedVaccines.entries()].sort((a,b) => {
       const order = { high:0, low:1, '':2 };
       return (order[a[1].priority]||2) - (order[b[1].priority]||2);
@@ -1297,42 +1310,24 @@ function downloadPDF() {
       const v = all.find(x => x.category === cat && x.brand === brand);
       if (!v) return;
       const lineTotal = v.mrp * entry.qty;
-      subtotal += lineTotal;
       const priorityBadge = entry.priority === 'high'
         ? '<span style="background:#fee2e2;color:#dc2626;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:5px">🔴 HIGH</span>'
         : entry.priority === 'low'
         ? '<span style="background:#fef9c3;color:#ca8a04;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;margin-left:5px">🟡 LOW</span>' : '';
       const qtyLabel = entry.qty > 1 ? ` <span style="color:#1d4ed8;font-size:11px">×${entry.qty}</span>` : '';
-      if (isDueMode) {
-        vaccineRows += `<tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${brand}${qtyLabel}${priorityBadge}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${cat}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:600;color:#0d9488">${v.mrp ? '₹'+v.mrp.toLocaleString('en-IN') : 'Free'}</td>
-        </tr>`;
-      } else {
-        vaccineRows += `<tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${brand}${qtyLabel}${priorityBadge}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${cat}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:700;color:#0d9488">₹${lineTotal.toLocaleString('en-IN')}</td>
-        </tr>`;
-      }
+      vaccineRows += `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${brand}${qtyLabel}${priorityBadge}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:12px">${cat}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:right;font-weight:${isDueMode?'600':'700'};color:#0d9488">${v.mrp ? '₹'+(isDueMode?v.mrp:lineTotal).toLocaleString('en-IN') : 'Free'}</td>
+      </tr>`;
     });
   }
 
-  let discPct = parseFloat(document.getElementById('discountPct')?.value || 0);
-  const optOut = document.getElementById('optOutCons')?.checked;
-  const freeConsEl = document.getElementById('freeCons');
-  const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
-  const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
-  if (optOut) discPct += 2;
-  const discAmt = Math.round(subtotal * discPct / 100);
-  const total = subtotal - discAmt;
-  const discLabel = discPct > 0 ? `${discPct}%${optOut?' (incl. 2% opt-out bonus)':''}` : 'No discount';
+  const discLabel = autoDiscount > 0 ? `${autoDiscount}%` : 'No discount';
 
-  // Free consultation row for PDF
   let consRow = '';
   if (optOut) {
-    consRow = `<div class="sum-row"><span>Free Consultations</span><span style="color:#64748b">Opted out (extra 2% discount applied)</span></div>`;
+    consRow = `<div class="sum-row"><span>Opt-out saving</span><span style="color:#ef4444">−₹${optOutSaving.toLocaleString('en-IN')}</span></div>`;
   } else if (consVal > 0) {
     consRow = `<div class="sum-row"><span>Free Consultations</span><span style="color:#16a34a;font-weight:700">${consCountLabel}</span></div>
     <div class="sum-row" style="font-size:12px;color:#64748b"><span>&nbsp;&nbsp;&nbsp;📅 Valid from ${todayStr} to ${validityStr}</span><span>(1 year)</span></div>`;
@@ -1341,9 +1336,7 @@ function downloadPDF() {
   }
 
   const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
+<html><head><meta charset="UTF-8">
 <title>Vaccine Panda – ${isDueMode ? 'Due Vaccine List' : 'Quotation'} – ${childName}</title>
 <style>
   body { font-family: Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px; font-size: 14px; }
@@ -1366,8 +1359,7 @@ function downloadPDF() {
   .footer { margin-top: 24px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
   @media print { body { padding: 12px; } }
 </style>
-</head>
-<body>
+</head><body>
 <div class="header">
   <div style="display:flex;align-items:center;gap:10px">
     <span style="font-size:32px">🐼</span>
@@ -1392,19 +1384,15 @@ function downloadPDF() {
 
 <div class="section">
   <div class="section-title">💉 ${isDueMode ? 'Due Vaccines' : 'Selected Vaccines'} (${selectedVaccines.size})</div>
-  ${isDueMode
-    ? `<table><thead><tr><th>Vaccine</th><th>Category</th><th style="text-align:right">MRP</th></tr></thead><tbody>${vaccineRows}</tbody></table>`
-    : `<table><thead><tr><th>Brand</th><th>Category</th><th style="text-align:right">MRP</th></tr></thead><tbody>${vaccineRows}</tbody></table>`
-  }
+  <table><thead><tr><th>${isDueMode?'Vaccine':'Brand'}</th><th>Category</th><th style="text-align:right">MRP</th></tr></thead><tbody>${vaccineRows}</tbody></table>
 </div>
 
 ${!isDueMode ? `<div class="summary-box">
   <div class="sum-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
-  <div class="sum-row"><span>Discount (${discLabel})</span><span style="color:#ef4444">−₹${discAmt.toLocaleString('en-IN')}</span></div>
+  <div class="sum-row"><span>Discount (${discLabel})</span><span style="color:#ef4444">−₹${discountAmt.toLocaleString('en-IN')}</span></div>
   ${consRow}
   <div class="sum-row total"><span>Total Payable</span><span>₹${total.toLocaleString('en-IN')}</span></div>
 </div>
-
 ${(!optOut && consVal > 0) ? `<div class="validity-box">
   🎁 <b>${consCountLabel} Free Consultation${parseInt(consCountLabel)>1?'s':''}</b> included with this quotation<br>
   📅 <b>Valid from:</b> ${todayStr} &nbsp;|&nbsp; <b>Valid till:</b> ${validityStr} (1 year)<br>
