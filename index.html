@@ -761,7 +761,7 @@ const VACCINES = [
   { category: "Hepatitis A", brand: "HAVRIX PAED 720 IU", mrp: 2528 },
   { category: "Hepatitis A", brand: "HAVSHIELD", mrp: 2515.59 },
   // Typhoid
-  { category: "Typhoid", brand: "BIOVAC TCV - Dr Reddy's", mrp: 2622 },
+  { category: "Typhoid", brand: "BIOVAC TCV - Dr Reddy's", mrp: 2884 },
   { category: "Typhoid", brand: "ENTEROSHIELD PFS", mrp: 2347.40 },
   { category: "Typhoid", brand: "Typbar TCV PFS", mrp: 2353.45 },
   { category: "Typhoid", brand: "Typhi Bev", mrp: 2366 },
@@ -1129,7 +1129,7 @@ function recalc() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
   }
 
   const freeCons = parseInt(document.getElementById('freeCons')?.value || 0);
@@ -1210,7 +1210,7 @@ function buildWhatsAppText() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
@@ -1289,7 +1289,7 @@ function downloadPDF() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
