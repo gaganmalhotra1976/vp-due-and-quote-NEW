@@ -788,16 +788,16 @@ const VACCINES = [
   // Quadrivalent DPT Painless
   { category: "Quadrivalent DPT (Painless)", brand: "Tetraxim Inj", mrp: 2635 },
   // Flu / Influenza
-  { category: "Flu Injection", brand: "FLUARIX TETRA NH/SH", mrp: 2499 },
+  { category: "Flu Injection", brand: "FLUARIX TRIVALENT", mrp: 2499 },
   { category: "Flu Injection", brand: "FLUQUADRI (AD)", mrp: 2460 },
-  { category: "Flu Injection", brand: "INFLUVAC TETRA INJ 25-26", mrp: 2688 },
+  { category: "Flu Injection", brand: "INFLUVAC TETRA INJ 26-27", mrp: 2950 },
   { category: "Flu (Trivalent)", brand: "Vaxiflu TRIV", mrp: 1990 },
   // Cholera
   { category: "Cholera Drops", brand: "HILLCHOL", mrp: 800 },
   // Japanese Encephalitis
   { category: "Japanese Encephalitis", brand: "JENVAC PFS", mrp: 710.98 },
   // Meningitis
-  { category: "Meningitis", brand: "MENACTRA", mrp: 5950 },
+  { category: "Meningitis", brand: "MENACTRA", mrp: 5700 },
   { category: "Meningitis", brand: "MENVEO", mrp: 4728 },
   // Chicken Pox / Varicella
   { category: "Chicken Pox (Varicella)", brand: "NEXIPOX PLUS", mrp: 2778 },
@@ -817,7 +817,7 @@ const VACCINES = [
   // MMR
   { category: "MMR", brand: "PRIORIX (MMR)", mrp: 941 },
   { category: "MMR", brand: "Tresivac", mrp: 725 },
-  { category: "MMR", brand: "Zyvac MMR", mrp: 983 },
+  { category: "MMR", brand: "Zyvac MMR", mrp: 895 },
   // Rabies
   { category: "Rabies", brand: "ABHAYRAB", mrp: 397 },
   { category: "Rabies", brand: "RABIVAX S", mrp: 404.35 },
@@ -1129,7 +1129,7 @@ function recalc() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
+    else if (subtotal > 10000) optOutSaving = 500;
   }
 
   const freeCons = parseInt(document.getElementById('freeCons')?.value || 0);
@@ -1210,7 +1210,7 @@ function buildWhatsAppText() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
+    else if (subtotal > 10000) optOutSaving = 500;
   }
 
   const freeConsEl = document.getElementById('freeCons');
@@ -1289,7 +1289,7 @@ function downloadPDF() {
   let optOutSaving = 0;
   if (optOut) {
     if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = (afterDiscount > 10000) ? 500 : 100;
+    else if (subtotal > 10000) optOutSaving = 500;
   }
 
   const freeConsEl = document.getElementById('freeCons');
