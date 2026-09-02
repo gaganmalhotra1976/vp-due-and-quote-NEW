@@ -693,7 +693,7 @@
     </div>
     <label class="opt-out-row" id="optOutRow">
       <input type="checkbox" id="optOutCons" onchange="recalc()">
-      Opt out of free consultations (₹5k–₹10k bill: flat ₹100 off · bill &gt;₹10k: flat ₹500 off)
+      Opt out of free consultations (flat ₹100 off if post-7%-discount bill &gt;₹5k · flat ₹500 off if post-9%-discount bill &gt;₹10k)
     </label>
   </div>
 
@@ -817,7 +817,7 @@ const VACCINES = [
   // MMR
   { category: "MMR", brand: "PRIORIX (MMR)", mrp: 941 },
   { category: "MMR", brand: "Tresivac", mrp: 725 },
-  { category: "MMR", brand: "Zyvac MMR", mrp: 895 },
+  { category: "MMR", brand: "Zyvac MMR", mrp: 983 },
   // Rabies
   { category: "Rabies", brand: "ABHAYRAB", mrp: 397 },
   { category: "Rabies", brand: "RABIVAX S", mrp: 404.35 },
@@ -1125,11 +1125,12 @@ function recalc() {
 
   const optOut = canOptOut && optOutCheck.checked;
 
-  // Opt-out saving: flat ₹100 for 5k-10k, flat ₹500 for >10k
+  // Opt-out saving: flat ₹500 if after 9% discount bill still > 10,000;
+  // flat ₹100 if after 7% discount bill still > 5,000
   let optOutSaving = 0;
   if (optOut) {
-    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
+    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
   }
 
   const freeCons = parseInt(document.getElementById('freeCons')?.value || 0);
@@ -1209,8 +1210,8 @@ function buildWhatsAppText() {
   const optOut = document.getElementById('optOutCons')?.checked && subtotal > 5000;
   let optOutSaving = 0;
   if (optOut) {
-    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
+    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
@@ -1288,8 +1289,8 @@ function downloadPDF() {
   const optOut = document.getElementById('optOutCons')?.checked && subtotal > 5000;
   let optOutSaving = 0;
   if (optOut) {
-    if (subtotal > 5000 && subtotal <= 10000) optOutSaving = 100;
-    else if (subtotal > 10000) optOutSaving = 500;
+    if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
+    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
