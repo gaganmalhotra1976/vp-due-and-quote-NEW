@@ -693,7 +693,7 @@
     </div>
     <label class="opt-out-row" id="optOutRow">
       <input type="checkbox" id="optOutCons" onchange="recalc()">
-      Opt out of free consultations (flat ₹100 off if post-7%-discount bill &gt;₹5k · flat ₹500 off if post-9%-discount bill &gt;₹10k)
+      Opt out of free consultations (flat ₹500 off if bill after 9% discount &gt;₹10k · otherwise flat ₹100 off if bill after discount &gt;₹5k)
     </label>
   </div>
 
@@ -1133,10 +1133,15 @@ function recalc() {
   let optOutSaving = 0;
   if (optOut) {
     if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
-    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
+    else if ((autoDiscount === 9 || autoDiscount === 7) && afterDiscount > 5000) optOutSaving = 100;
   }
 
-  const freeCons = parseInt(document.getElementById('freeCons')?.value || 0);
+  // Opt-out => free consultations forced to None and locked
+  const freeConsSel = document.getElementById('freeCons');
+  if (optOut) freeConsSel.value = '0';
+  freeConsSel.disabled = optOut;
+  freeConsSel.style.opacity = optOut ? '0.5' : '1';
+  const freeCons = optOut ? 0 : parseInt(freeConsSel.value || 0);
   const total = Math.max(0, afterDiscount - optOutSaving);
 
   if (currentMode === 'quote') {
@@ -1214,7 +1219,7 @@ function buildWhatsAppText() {
   let optOutSaving = 0;
   if (optOut) {
     if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
-    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
+    else if ((autoDiscount === 9 || autoDiscount === 7) && afterDiscount > 5000) optOutSaving = 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
@@ -1293,7 +1298,7 @@ function downloadPDF() {
   let optOutSaving = 0;
   if (optOut) {
     if (autoDiscount === 9 && afterDiscount > 10000) optOutSaving = 500;
-    else if (autoDiscount === 7 && afterDiscount > 5000) optOutSaving = 100;
+    else if ((autoDiscount === 9 || autoDiscount === 7) && afterDiscount > 5000) optOutSaving = 100;
   }
 
   const freeConsEl = document.getElementById('freeCons');
