@@ -465,6 +465,48 @@
   }
   .opt-out-row input[type="checkbox"] { accent-color: var(--amber); }
 
+  /* SPECIAL OFFER ROW */
+  .offer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--purple-light);
+    border: 1.5px solid var(--purple);
+    border-radius: 10px;
+    font-size: 13px;
+    color: #5b21b6;
+    flex-wrap: wrap;
+  }
+  .offer-row input[type="text"] {
+    flex: 1;
+    min-width: 100px;
+    padding: 5px 8px;
+    border: 1.5px solid #c4b5fd;
+    border-radius: 7px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    background: white;
+    outline: none;
+  }
+  .offer-row input[type="text"]:focus { border-color: var(--purple); }
+  .offer-row input[type="number"] {
+    width: 60px;
+    padding: 5px 6px;
+    border: 1.5px solid #c4b5fd;
+    border-radius: 7px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    background: white;
+    outline: none;
+    text-align: center;
+  }
+  .offer-row input[type="number"]:focus { border-color: var(--purple); }
+  .offer-row label { white-space: nowrap; font-weight: 600; }
+  .offer-row .offer-pct-wrap { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
   /* SUMMARY */
   .summary-rows { display: flex; flex-direction: column; gap: 8px; }
   .summary-row {
@@ -688,6 +730,14 @@
       <input type="checkbox" id="optOutCons" onchange="recalc()">
       Opt out of free consultations (flat ₹100 off if bill after discount is above ₹5,000 and up to ₹10,000 · flat ₹500 off if above ₹10,000 · not available at ₹5,000 or below)
     </label>
+    <div class="offer-row">
+      <label>🎁 Special Offer:</label>
+      <input type="text" id="offerName" placeholder="Offer name (e.g. Diwali Special)" oninput="recalc()">
+      <div class="offer-pct-wrap">
+        <input type="number" id="offerPct" min="0" max="50" step="0.5" placeholder="0" oninput="recalc()">
+        <span style="font-weight:700;">% extra off</span>
+      </div>
+    </div>
   </div>
 
   <!-- SUMMARY (only in quote mode) -->
@@ -698,6 +748,7 @@
       <div class="summary-row"><span class="label">Discount</span><span class="val" id="sumDiscount" style="color:var(--red)">−₹0</span></div>
       <div class="summary-row"><span class="label">Opt-out saving</span><span class="val" id="sumOptOut" style="color:var(--red)">₹0</span></div>
       <div class="summary-row"><span class="label">Consultations value</span><span class="val" id="sumCons">₹0</span></div>
+      <div class="summary-row" id="offerSummaryRow" style="display:none;"><span class="label" id="offerSummaryLabel" style="color:var(--purple);">🎁 Special Offer</span><span class="val" id="sumOffer" style="color:var(--purple);">−₹0</span></div>
       <div class="summary-row total"><span>Total Payable</span><span id="sumTotal">₹0</span></div>
     </div>
   </div>
@@ -1146,7 +1197,11 @@ function recalc() {
   freeConsSel.add(new Option(consCount ? `${consCount} (₹${freeCons.toLocaleString('en-IN')})` : 'None', String(freeCons)));
   freeConsSel.value = String(freeCons);
   freeConsSel.style.opacity = optOut ? '0.5' : '1';
-  const total = Math.max(0, afterDiscount - optOutSaving);
+  // Special offer extra discount
+  const offerPctVal = parseFloat(document.getElementById('offerPct')?.value) || 0;
+  const offerNameVal = (document.getElementById('offerName')?.value || '').trim();
+  const offerAmt = offerPctVal > 0 ? Math.round((afterDiscount - optOutSaving) * offerPctVal / 100) : 0;
+  const total = Math.max(0, afterDiscount - optOutSaving - offerAmt);
 
   if (currentMode === 'quote') {
     document.getElementById('sumSubtotal').textContent = '₹' + subtotal.toLocaleString('en-IN');
@@ -1156,6 +1211,15 @@ function recalc() {
       optOutSaving ? `−₹${optOutSaving.toLocaleString('en-IN')} (opt-out)` : '₹0';
     document.getElementById('sumCons').textContent =
       freeCons ? '₹' + freeCons.toLocaleString('en-IN') : '₹0';
+    // Offer row
+    const offerRow = document.getElementById('offerSummaryRow');
+    if (offerAmt > 0) {
+      document.getElementById('offerSummaryLabel').textContent = offerNameVal ? `🎁 ${offerNameVal}` : '🎁 Special Offer';
+      document.getElementById('sumOffer').textContent = `−₹${offerAmt.toLocaleString('en-IN')} (${offerPctVal}%)`;
+      offerRow.style.display = '';
+    } else {
+      offerRow.style.display = 'none';
+    }
     document.getElementById('sumTotal').textContent = '₹' + total.toLocaleString('en-IN');
   }
 
@@ -1229,7 +1293,10 @@ function buildWhatsAppText() {
   const freeConsEl = document.getElementById('freeCons');
   const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
   const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
-  const total = Math.max(0, afterDiscount - optOutSaving);
+  const offerPctWA = parseFloat(document.getElementById('offerPct')?.value) || 0;
+  const offerNameWA = (document.getElementById('offerName')?.value || '').trim();
+  const offerAmtWA = offerPctWA > 0 ? Math.round((afterDiscount - optOutSaving) * offerPctWA / 100) : 0;
+  const total = Math.max(0, afterDiscount - optOutSaving - offerAmtWA);
   const isDueMode = currentMode === 'due';
 
   let vaccineLines = '';
@@ -1262,6 +1329,10 @@ function buildWhatsAppText() {
     if (optOutSaving > 0) msg += `Opt-out saving: −₹${optOutSaving.toLocaleString('en-IN')}\n`;
     if (!optOut && consVal > 0) {
       msg += `Free Consultations: ${consCountLabel}\n  📅 Valid for ${consValidityLabel()} from date of last vaccination\n  Transferable only to siblings of the vaccinated child · non-encashable\n`;
+    }
+    if (offerAmtWA > 0) {
+      const offerLabel = offerNameWA || 'Special Offer';
+      msg += `🎁 ${offerLabel} (${offerPctWA}%): −₹${offerAmtWA.toLocaleString('en-IN')}\n`;
     }
     msg += `*Total Payable: ₹${total.toLocaleString('en-IN')}*\n\n_Quote valid for 30 days_\n`;
   } else {
@@ -1308,7 +1379,10 @@ function downloadPDF() {
   const freeConsEl = document.getElementById('freeCons');
   const consVal = optOut ? 0 : parseInt(freeConsEl?.value || 0);
   const consCountLabel = freeConsEl ? freeConsEl.options[freeConsEl.selectedIndex]?.text : 'None';
-  const total = Math.max(0, afterDiscount - optOutSaving);
+  const offerPctPDF = parseFloat(document.getElementById('offerPct')?.value) || 0;
+  const offerNamePDF = (document.getElementById('offerName')?.value || '').trim();
+  const offerAmtPDF = offerPctPDF > 0 ? Math.round((afterDiscount - optOutSaving) * offerPctPDF / 100) : 0;
+  const total = Math.max(0, afterDiscount - optOutSaving - offerAmtPDF);
   const isDueMode = currentMode === 'due';
 
   let vaccineRows = '';
@@ -1405,6 +1479,7 @@ ${!isDueMode ? `<div class="summary-box">
   <div class="sum-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString('en-IN')}</span></div>
   <div class="sum-row"><span>Discount (${discLabel})</span><span style="color:#ef4444">−₹${discountAmt.toLocaleString('en-IN')}</span></div>
   ${consRow}
+  ${offerAmtPDF > 0 ? `<div class="sum-row"><span style="color:#7c3aed">🎁 ${offerNamePDF || 'Special Offer'} (${offerPctPDF}%)</span><span style="color:#7c3aed">−₹${offerAmtPDF.toLocaleString('en-IN')}</span></div>` : ''}
   <div class="sum-row total"><span>Total Payable</span><span>₹${total.toLocaleString('en-IN')}</span></div>
 </div>
 ${(!optOut && consVal > 0) ? `<div class="validity-box">
